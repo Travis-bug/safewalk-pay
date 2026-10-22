@@ -466,11 +466,12 @@ footer.foot { color: var(--muted); font-size: 12.5px; max-width: 90ch; display: 
   function vacMul() { return 1 + (Number(state.settings.vacPct) || 0) / 100; }
   function wagesOf(mins, day) { return mins / 60 * rateOn(day); }
   function grossOf(mins, day) { return wagesOf(mins, day) * vacMul(); }
-  /* Ontario public holiday pay: wages (plus vacation pay) earned in the 4 work weeks before the holiday's week, divided by 20 */
+  /* Ontario public holiday pay: wages earned in the 4 work weeks before the holiday's work week, divided by 20.
+     Work weeks run Thursday to Wednesday like the pay periods; this lands within 1% of both stat amounts on Travis's stubs (Labour Day, Thanksgiving). */
   function holidayBase(hday, list) {
-    var wk = hday - parts(hday).w, from = wk - 28, to = wk - 1, w = 0;
+    var a = dayNum(state.settings.anchor || DEFAULTS.anchor), wk = hday - ((((hday - a) % 7) + 7) % 7), from = wk - 28, to = wk - 1, w = 0;
     list.forEach(function (s) { if (s.active && s.day >= from && s.day <= to) w += wagesOf(s.actMins != null ? s.actMins : s.planMins, s.day); });
-    return r2(w * vacMul() / 20);
+    return r2(w / 20);
   }
   function bracket(A, th) { var i = 0; for (var j = 0; j < th.length; j++) if (A >= th[j]) i = j; return i; }
   function ohp(A) {
