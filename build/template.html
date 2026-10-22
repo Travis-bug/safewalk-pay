@@ -319,8 +319,8 @@ footer.foot { color: var(--muted); font-size: 12.5px; max-width: 90ch; display: 
     <div id="action"></div>
     <section class="summary" aria-label="Summary">
       <div class="stat" id="t-pay"><span class="k">Next payday</span><span class="v">—</span><span class="s">Loading your shifts</span></div>
-      <div class="stat" id="t-proj"><span class="k">This period · projected</span><span class="v">—</span><span class="s">&nbsp;</span></div>
-      <div class="stat" id="t-act"><span class="k">This period · actual so far</span><span class="v">—</span><span class="s">&nbsp;</span></div>
+      <div class="stat" id="t-proj"><span class="k">This period · full schedule</span><span class="v">—</span><span class="s">&nbsp;</span></div>
+      <div class="stat" id="t-act"><span class="k">This period · worked so far</span><span class="v">—</span><span class="s">&nbsp;</span></div>
       <div class="stat" id="t-sheets"><span class="k">Time sheets to send</span><span class="v">—</span><span class="s">&nbsp;</span></div>
     </section>
     <div class="cols">
@@ -679,12 +679,12 @@ footer.foot { color: var(--muted); font-size: 12.5px; max-width: 90ch; display: 
     if (!state.loaded) return;
     var t = todayNum();
     var due = periods.filter(function (p) { return !p.paid && p.payday >= t && p.expMins > 0; }).sort(function (a, b) { return a.payday - b.payday; })[0];
-    if (due) setStat('t-pay', money.format(due.exp.net), fmtWMD(due.payday) + ' (' + relDays(due.payday) + ') · take-home est. on ' + money.format(due.exp.gross) + ' gross · ' + fmtMD(due.start) + '–' + fmtMD(due.end) + (due.needs ? ' · ' + due.needs + ' shift(s) still need times' : ''));
+    if (due) setStat('t-pay', money.format(due.exp.net), 'take-home, ' + fmtWMD(due.payday) + ' (' + relDays(due.payday) + ') · ' + money.format(due.exp.gross) + ' before deductions · real hours so far + the shifts still to come' + (due.needs ? ' · ' + due.needs + ' shift(s) still need times' : ''));
     else setStat('t-pay', '—', 'No unpaid shifts in an upcoming pay period');
     var cur = periods.find(function (p) { return t >= p.start && t <= p.end; });
     if (cur) {
-      setStat('t-proj', money.format(cur.proj.gross), fmtHours(cur.projMins) + ' on the schedule · ~' + money.format(cur.proj.net) + ' take-home' + (cur.deltaMins ? ' · ' + signedHours(cur.deltaMins) + ' from changes' : ''));
-      setStat('t-act', money.format(cur.act.gross), fmtHours(cur.actMins) + ' clocked · ~' + money.format(cur.act.net) + ' take-home' + (cur.needs ? ' · ' + cur.needs + ' need times' : ''));
+      setStat('t-proj', money.format(cur.proj.net), 'take-home if every shift runs exactly as scheduled · ' + fmtHours(cur.projMins) + ' · ' + money.format(cur.proj.gross) + ' before deductions' + (cur.deltaMins ? ' · ' + signedHours(cur.deltaMins) + ' from changes' : ''));
+      setStat('t-act', money.format(cur.act.net), 'take-home for the ' + fmtHours(cur.actMins) + ' worked so far · ' + money.format(cur.act.gross) + ' before deductions' + (cur.needs ? ' · ' + cur.needs + ' need times' : ''));
     }
     var todo = list.filter(function (s) { return s.active && s.phase !== 'future' && (s.sheet === 'missing' || s.sheet === 'fix'); }).sort(function (a, b) { return a.day - b.day; });
     if (todo.length) setStat('t-sheets', String(todo.length), todo.map(function (s) { return fmtMD(s.day) + ' ' + (s.loc || '') + (s.sheet === 'fix' ? ' (fix)' : ''); }).join(' · '), 'alert');
