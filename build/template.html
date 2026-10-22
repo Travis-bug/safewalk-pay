@@ -1,0 +1,1149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>SafeWalk Shifts &amp; Pay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap">
+<style>
+/* Layout: navy header band finished with hi-vis vest tape, a tab bar, then one view at a time (Overview, Shifts, Pay, Changes); grids stack to one column on phones */
+:root {
+  --bg: #EEF1F6; --surface: #FFFFFF; --surface-2: #F5F7FA; --ink: #141B2B; --muted: #5A6479; --line: #D7DDE7;
+  --band: #17213A; --band-ink: #EEF2FA; --band-muted: #A7B2C9; --band-line: #3A4766;
+  --hivis: #F4C21B; --on-hivis: #1A1606; --reflect: #C8CED8; --hivis-soft: #FFF5D1; --accent-ink: #7A5300;
+  --info: #2752C4; --info-bg: #E6ECFB; --good: #13704A; --good-bg: #DFF2E8;
+  --wait: #A4470D; --wait-bg: #FBEADB; --bad: #B42318; --bad-bg: #FCE6E3; --focus: #2752C4;
+  --proj: #C3CBDA; --act: #24345E;
+  --f-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --f-body: "Barlow", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0D1220; --surface: #151C2D; --surface-2: #1B2338; --ink: #E6EAF3; --muted: #98A2B7; --line: #29324B;
+    --band: #090E1A; --band-ink: #EEF2FA; --band-muted: #8E9AB3; --band-line: #2A3550;
+    --hivis: #F4C21B; --on-hivis: #1A1606; --reflect: #6F7889; --hivis-soft: #2E2710; --accent-ink: #F4C21B;
+    --info: #93AEFF; --info-bg: #1B2747; --good: #5FD39A; --good-bg: #12301F;
+    --wait: #F5A266; --wait-bg: #3A2312; --bad: #FF8A7E; --bad-bg: #3C1714; --focus: #93AEFF;
+    --proj: #3B4664; --act: #F4C21B;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0D1220; --surface: #151C2D; --surface-2: #1B2338; --ink: #E6EAF3; --muted: #98A2B7; --line: #29324B;
+  --band: #090E1A; --band-ink: #EEF2FA; --band-muted: #8E9AB3; --band-line: #2A3550;
+  --hivis: #F4C21B; --on-hivis: #1A1606; --reflect: #6F7889; --hivis-soft: #2E2710; --accent-ink: #F4C21B;
+  --info: #93AEFF; --info-bg: #1B2747; --good: #5FD39A; --good-bg: #12301F;
+  --wait: #F5A266; --wait-bg: #3A2312; --bad: #FF8A7E; --bad-bg: #3C1714; --focus: #93AEFF;
+  --proj: #3B4664; --act: #F4C21B;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.45; }
+.wrap { max-width: 1160px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.num { font-variant-numeric: tabular-nums; }
+h1, h2, h3 { text-wrap: balance; margin: 0; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Header band + vest tape */
+.band { background: var(--band); color: var(--band-ink); }
+.band-inner { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: flex-end; justify-content: space-between; padding-block: 24px 18px; }
+.eyebrow { margin: 0 0 4px; font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--band-muted); }
+h1 { font-family: var(--f-display); font-weight: 700; font-size: clamp(34px, 6vw, 46px); line-height: .95; letter-spacing: .01em; text-transform: uppercase; }
+.band-side { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; }
+.pill { font-size: 13.5px; color: var(--band-ink); border: 1px solid var(--band-line); border-radius: 999px; padding: 5px 11px; white-space: nowrap; }
+.pill .flag { color: var(--hivis); font-weight: 600; }
+.pill .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--hivis); margin-right: 6px; vertical-align: 1px; }
+.tape { height: 14px; background: linear-gradient(var(--hivis) 0 4px, var(--reflect) 4px 10px, var(--hivis) 10px 14px); }
+
+/* Tabs */
+.tabs { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--line); background: var(--surface); }
+.tabs-inner { display: flex; gap: 2px; }
+.tab { background: none; border: 0; border-bottom: 3px solid transparent; padding: 12px 14px 10px; font-weight: 600; font-size: 15px; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--hivis); }
+[hidden] { display: none !important; }
+body.ro [data-action]:not([data-action="view"]):not([data-action="filter"]):not([data-action="go-needs"]), body.ro #action, body.ro #shift-form, body.ro #settings, body.ro .logger { display: none !important; }
+.tab .ct { display: inline-block; min-width: 20px; margin-left: 6px; padding: 0 6px; border-radius: 999px; background: var(--bad-bg); color: var(--bad); font-size: 12px; line-height: 18px; text-align: center; }
+
+main.wrap { display: grid; gap: 20px; padding-block: 20px 44px; }
+.view { display: grid; gap: 20px; min-width: 0; }
+
+/* Buttons */
+.btn { font-weight: 600; font-size: 14px; padding: 8px 14px; border-radius: 6px; border: 1px solid transparent; cursor: pointer; line-height: 1.2; min-height: 38px; }
+.btn-primary { background: var(--hivis); color: var(--on-hivis); }
+.btn-primary:hover { filter: brightness(.96); }
+.btn-quiet { background: transparent; color: var(--ink); border-color: var(--line); }
+.btn-quiet:hover { background: var(--surface-2); }
+.btn-band { background: transparent; color: var(--band-ink); border-color: var(--band-line); }
+.btn-band:hover { background: var(--band-line); }
+.link { background: none; border: 0; padding: 2px 0; color: var(--info); font-weight: 600; font-size: 13px; cursor: pointer; text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px; }
+.link:hover { text-decoration-color: currentColor; }
+.link.danger { color: var(--bad); }
+
+/* Banner */
+.banner { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; background: var(--info-bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; font-size: 14px; }
+.banner p { margin: 0; max-width: 80ch; }
+.banner.warn { background: var(--wait-bg); }
+#banners { display: grid; gap: 10px; }
+
+/* Panels */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; min-width: 0; }
+@media (max-width: 560px) { .panel { padding: 14px; } }
+.panel-head { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+h2 { font-family: var(--f-display); font-weight: 600; font-size: 24px; letter-spacing: .02em; text-transform: uppercase; }
+h3 { font-family: var(--f-display); font-weight: 600; font-size: 19px; letter-spacing: .03em; text-transform: uppercase; }
+.hint { margin: 0 0 8px; color: var(--muted); font-size: 13.5px; max-width: 70ch; }
+.cols { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+@media (min-width: 980px) { .cols { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); } }
+
+/* Action card: log tonight's times */
+.action { background: var(--hivis-soft); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: grid; gap: 12px; }
+.action h2 { font-size: 22px; }
+.log-item { display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+.log-item:first-of-type { border-top: 0; padding-top: 0; }
+.log-title { font-weight: 600; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.log-title .sub { font-weight: 400; color: var(--muted); font-size: 13.5px; }
+.logger { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; gap: 8px 10px; align-items: end; }
+.logger .lp { grid-column: 1 / -1; font-size: 13.5px; color: var(--muted); font-variant-numeric: tabular-nums; margin: 0; }
+.logger .row-btns { align-items: center; }
+@media (max-width: 620px) { .logger { grid-template-columns: repeat(2, minmax(0, 1fr)); } .logger .row-btns { grid-column: 1 / -1; } }
+
+/* Summary strip */
+.summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.stat { background: var(--surface); padding: 16px 18px; min-width: 0; display: grid; gap: 3px; align-content: start; }
+.k { font-size: 11.5px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+.v { font-family: var(--f-display); font-weight: 600; font-size: 30px; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.v.alert { color: var(--bad); }
+.v.calm { color: var(--good); }
+.s { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+@media (max-width: 760px) { .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } .v { font-size: 26px; } .stat { padding: 14px; } }
+
+/* Chart */
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--muted); margin: 0 0 6px; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.chart-box { overflow-x: auto; }
+.chart { display: block; width: 100%; min-width: 420px; height: auto; }
+.chart text { fill: var(--muted); font-family: var(--f-body); font-size: 11px; font-variant-numeric: tabular-nums; }
+.chart text.cur { fill: var(--ink); font-weight: 600; }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .b-proj { fill: var(--proj); }
+.chart .b-act { fill: var(--act); }
+
+/* Chips */
+.chip { display: inline-block; font-size: 11.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; padding: 4px 8px; border-radius: 4px; white-space: nowrap; line-height: 1.2; }
+.c-info { background: var(--info-bg); color: var(--info); }
+.c-good { background: var(--good-bg); color: var(--good); }
+.c-wait { background: var(--wait-bg); color: var(--wait); }
+.c-bad { background: var(--bad-bg); color: var(--bad); }
+.c-now { background: var(--hivis); color: var(--on-hivis); }
+.c-muted { background: var(--surface-2); color: var(--muted); border: 1px solid var(--line); }
+.c-role { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+.c-role.r-training, .c-role.r-event { color: var(--accent-ink); border-color: var(--accent-ink); }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+
+/* Lists */
+ul.list { list-style: none; margin: 0; padding: 0; }
+.group { font-size: 11.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); padding: 16px 0 6px; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { background: transparent; border: 0; padding: 6px 11px; font-size: 13.5px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.seg .ct { font-weight: 500; opacity: .75; margin-left: 3px; }
+
+.shift { display: grid; grid-template-columns: 50px minmax(0, 1fr) auto; gap: 8px 14px; align-items: start; padding: 12px 0; border-top: 1px solid var(--line); }
+.group + .shift { border-top-color: transparent; }
+.shift.is-now { background: var(--hivis-soft); border-radius: 8px; padding-inline: 10px; margin-inline: -10px; }
+.dblock { text-align: center; line-height: 1.05; padding-top: 2px; }
+.dblock .dw { display: block; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.dblock .dn { display: block; font-family: var(--f-display); font-weight: 700; font-size: 28px; font-variant-numeric: tabular-nums; }
+.dblock .dm { display: block; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.what { min-width: 0; display: grid; gap: 3px; }
+.when-line { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; font-weight: 600; font-variant-numeric: tabular-nums; }
+.times { display: grid; grid-template-columns: auto 1fr; gap: 1px 10px; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.times .tl { color: var(--muted); font-size: 11.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; padding-top: 2px; }
+.times .missing { color: var(--bad); font-weight: 600; }
+.meta { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.note { font-size: 13px; color: var(--muted); max-width: 64ch; overflow-wrap: anywhere; }
+.is-off .when-line .t, .is-off .times .tv { text-decoration: line-through; color: var(--muted); }
+.side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.actions { display: flex; flex-wrap: wrap; gap: 4px 12px; justify-content: flex-end; }
+.confirm { font-size: 13px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.inline-log { grid-column: 2 / -1; }
+@media (max-width: 560px) {
+  .shift { grid-template-columns: 42px minmax(0, 1fr); }
+  .side { grid-column: 2; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+  .actions, .confirm, .chips { justify-content: flex-start; }
+}
+.empty { padding: 18px 0 6px; color: var(--muted); }
+.empty strong { color: var(--ink); }
+
+.mini { display: grid; grid-template-columns: 74px minmax(0, 1fr) auto; gap: 4px 12px; padding: 10px 0; border-top: 1px solid var(--line); font-size: 14px; align-items: baseline; }
+.mini:first-child { border-top: 0; }
+.mini .md { font-weight: 600; font-variant-numeric: tabular-nums; }
+.mini .mm { min-width: 0; }
+.mini .mm .meta { display: block; }
+.mini .mv { font-variant-numeric: tabular-nums; text-align: right; font-weight: 600; }
+
+/* Changes feed */
+.chg { display: grid; grid-template-columns: 92px minmax(0, 1fr) auto; gap: 4px 14px; padding: 12px 0; border-top: 1px solid var(--line); align-items: start; }
+.chg:first-child { border-top: 0; }
+.chg-when { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.chg-when span { display: block; font-weight: 400; color: var(--muted); font-size: 12.5px; }
+.chg-body { display: grid; gap: 4px; font-size: 14px; min-width: 0; }
+.chg-body .chips { justify-content: flex-start; }
+.chg-delta { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; font-size: 14px; white-space: nowrap; }
+.chg-delta span { display: block; font-weight: 400; color: var(--muted); font-size: 12.5px; }
+.plus { color: var(--good); }
+.minus { color: var(--bad); }
+@media (max-width: 560px) { .chg { grid-template-columns: minmax(0, 1fr) auto; } .chg-when { grid-column: 1 / -1; } }
+
+/* Forms */
+.form { background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 14px; margin: 8px 0 12px; display: grid; gap: 12px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px 12px; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field.full { grid-column: 1 / -1; }
+.field > span { font-size: 13px; font-weight: 600; }
+.field small { color: var(--muted); font-size: 12.5px; }
+fieldset { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px 12px; margin: 0; min-width: 0; }
+legend { font-size: 13px; font-weight: 600; padding: 0 6px; }
+input, select { width: 100%; font: inherit; font-size: 15px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; min-height: 40px; }
+input[type="checkbox"] { width: 18px; height: 18px; min-height: 0; accent-color: var(--hivis); }
+.check { display: flex; gap: 8px; align-items: center; font-size: 14px; flex-wrap: wrap; }
+.check input[type="number"] { width: 70px; }
+.preview { font-size: 14px; font-variant-numeric: tabular-nums; margin: 0; }
+.err { color: var(--bad); font-size: 13.5px; font-weight: 600; margin: 0; }
+.row-btns { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* Pay periods */
+.period { padding: 16px 0; border-top: 1px solid var(--line); display: grid; gap: 10px; }
+.period:first-child { border-top: 0; padding-top: 4px; }
+.p-top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.p-range { font-family: var(--f-display); font-weight: 600; font-size: 21px; font-variant-numeric: tabular-nums; }
+.p-sub { font-size: 13px; color: var(--muted); }
+.ded-wrap { overflow-x: auto; }
+table.ded { border-collapse: collapse; width: 100%; min-width: 300px; font-variant-numeric: tabular-nums; font-size: 14px; }
+table.ded th, table.ded td { padding: 5px 8px; text-align: right; border-bottom: 1px solid var(--line); }
+table.ded th:first-child { text-align: left; font-weight: 500; color: var(--muted); }
+table.ded thead th { font-size: 11.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+table.ded tr.net th, table.ded tr.net td { font-weight: 700; color: var(--ink); border-bottom: 0; font-size: 15px; }
+table.ded td.dim { color: var(--muted); }
+.p-notes { display: grid; gap: 4px; font-size: 13.5px; }
+.p-notes .plus, .p-notes .minus { font-weight: 600; }
+.payform { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px 10px; align-items: end; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+
+footer.foot { color: var(--muted); font-size: 12.5px; max-width: 90ch; display: grid; gap: 4px; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--surface); padding: 10px 16px; border-radius: 8px; font-size: 14px; font-weight: 600; z-index: 20; max-width: calc(100% - 32px); }
+.toast.bad { background: var(--bad); color: #fff; }
+</style>
+</head>
+<body>
+<header class="band">
+  <div class="wrap band-inner">
+    <div>
+      <p class="eyebrow">SafeWalk Captain</p>
+      <h1>Shifts &amp; Pay</h1>
+    </div>
+    <div class="band-side">
+      <span class="pill num" id="rate-pill">Pay rate —</span>
+      <span class="pill" id="check-pill" hidden></span>
+      <button class="btn btn-band" type="button" data-action="open-settings">Pay settings</button>
+    </div>
+  </div>
+  <div class="tape" aria-hidden="true"></div>
+</header>
+
+<nav class="tabs" aria-label="Sections">
+  <div class="wrap tabs-inner" role="tablist">
+    <button class="tab" role="tab" type="button" data-action="view" data-view="overview" aria-selected="true">Overview</button>
+    <button class="tab" role="tab" type="button" data-action="view" data-view="shifts" aria-selected="false">Shifts<span class="ct" id="tab-ct-shifts" hidden></span></button>
+    <button class="tab" role="tab" type="button" data-action="view" data-view="pay" aria-selected="false">Pay</button>
+    <button class="tab" role="tab" type="button" data-action="view" data-view="changes" aria-selected="false">Schedule changes</button>
+  </div>
+</nav>
+
+<main class="wrap">
+  <div id="banners"></div>
+
+  <section class="panel" id="settings" hidden aria-labelledby="h-settings">
+    <form id="settings-form" class="form" style="margin:0;background:transparent;border:0;padding:0">
+      <h3 id="h-settings">Pay settings</h3>
+      <div class="grid">
+        <label class="field"><span>Hourly rate ($)</span><input id="s-rate" type="number" step="0.01" min="0" inputmode="decimal"><small id="s-rate-hist">From your contract or a Dayforce pay stub.</small></label>
+        <label class="field"><span>This rate started on</span><input id="s-rate-from" type="date"><small>Pick a new date for a raise. Shifts before it keep the old rate.</small></label>
+        <label class="field"><span>Vacation pay added (%)</span><input id="s-vac" type="number" step="0.1" min="0" inputmode="decimal"><small>Ontario minimum is 4%. Some employers add it to every cheque.</small></label>
+        <label class="field"><span>Deductions</span><select id="s-mode"><option value="cra">Estimate CPP, EI and tax (CRA 2026)</option><option value="custom">Use my own percentage</option></select></label>
+        <label class="field"><span>My deduction %</span><input id="s-pct" type="number" step="0.1" min="0" max="90" inputmode="decimal"><small>Only used with “my own percentage”. Total deductions ÷ gross on a pay stub.</small></label>
+        <label class="field"><span>Pay period length</span><select id="s-days"><option value="14">2 weeks</option><option value="7">1 week</option></select></label>
+        <label class="field"><span>A pay period starts on</span><input id="s-anchor" type="date"></label>
+        <label class="field"><span>Payday is this many days after a period ends</span><input id="s-offset" type="number" step="1" min="0" inputmode="numeric"></label>
+        <label class="field"><span>Paydays per year (for tax)</span><input id="s-ppy" type="number" step="1" min="0" max="53" inputmode="numeric"><small>27 matches your 2026 pay stubs. Leave blank to work it out from the period length.</small></label>
+      </div>
+      <p class="err" id="settings-err" hidden></p>
+      <div class="row-btns"><button class="btn btn-primary" type="submit">Save settings</button><button class="btn btn-quiet" type="button" data-action="close-settings">Cancel</button></div>
+    </form>
+  </section>
+
+  <!-- OVERVIEW -->
+  <section class="view" id="view-overview">
+    <div id="action"></div>
+    <section class="summary" aria-label="Summary">
+      <div class="stat" id="t-pay"><span class="k">Next payday</span><span class="v">—</span><span class="s">Loading your shifts</span></div>
+      <div class="stat" id="t-proj"><span class="k">This period · projected</span><span class="v">—</span><span class="s">&nbsp;</span></div>
+      <div class="stat" id="t-act"><span class="k">This period · actual so far</span><span class="v">—</span><span class="s">&nbsp;</span></div>
+      <div class="stat" id="t-sheets"><span class="k">Time sheets to send</span><span class="v">—</span><span class="s">&nbsp;</span></div>
+    </section>
+    <div class="cols">
+      <section class="panel" aria-labelledby="h-chart">
+        <div class="panel-head"><h2 id="h-chart">Projected vs actual</h2><button class="link" type="button" data-action="view" data-view="pay">See pay periods</button></div>
+        <p class="legend"><span><i style="background:var(--proj)"></i>Projected (schedule)</span><span><i style="background:var(--act)"></i>Actual (clocked)</span><span>Gross pay per pay period</span></p>
+        <div class="chart-box" id="chart"></div>
+      </section>
+      <div class="view" style="gap:20px">
+        <section class="panel" aria-labelledby="h-next">
+          <div class="panel-head"><h2 id="h-next">Coming up</h2><button class="link" type="button" data-action="view" data-view="shifts">All shifts</button></div>
+          <div id="coming"></div>
+        </section>
+        <section class="panel" aria-labelledby="h-recent">
+          <div class="panel-head"><h2 id="h-recent">Recent changes</h2><button class="link" type="button" data-action="view" data-view="changes">All changes</button></div>
+          <ul class="list" id="recent"></ul>
+        </section>
+      </div>
+    </div>
+  </section>
+
+  <!-- SHIFTS -->
+  <section class="view" id="view-shifts" hidden>
+    <section class="panel" aria-labelledby="h-shifts">
+      <div class="panel-head">
+        <h2 id="h-shifts">Shifts</h2>
+        <button class="btn btn-primary" type="button" data-action="add">Add shift</button>
+      </div>
+      <div class="seg" role="group" aria-label="Show shifts" id="filters">
+        <button type="button" data-action="filter" data-filter="upcoming" aria-pressed="true">Upcoming<span class="ct"></span></button>
+        <button type="button" data-action="filter" data-filter="needs" aria-pressed="false">Needs times<span class="ct"></span></button>
+        <button type="button" data-action="filter" data-filter="past" aria-pressed="false">Worked<span class="ct"></span></button>
+        <button type="button" data-action="filter" data-filter="sheets" aria-pressed="false">Time sheets<span class="ct"></span></button>
+        <button type="button" data-action="filter" data-filter="all" aria-pressed="false">All<span class="ct"></span></button>
+      </div>
+
+      <form id="shift-form" class="form" hidden novalidate>
+        <h3 id="form-title">Add a shift</h3>
+        <div class="grid">
+          <label class="field"><span>Date</span><input id="f-date" type="date" required></label>
+          <label class="field"><span>What kind</span><select id="f-origin"><option value="schedule">On my schedule</option><option value="extra">Extra shift I picked up</option><option value="training">Training or event</option></select></label>
+          <label class="field"><span>Role</span><select id="f-role"><option>Captain</option><option>Walker</option><option>Training</option><option>Event</option></select></label>
+          <label class="field"><span>Campus</span><select id="f-loc"><option value="CL">Casa Loma</option><option value="SJ">St. James</option><option value="HOSP">Hospitality</option><option value="WF">Waterfront</option><option value="">Not sure / other</option></select></label>
+          <label class="field"><span>Status</span><select id="f-status"><option value="scheduled">Working it</option><option value="swapped">Swapped away</option><option value="cancelled">Dropped / cancelled</option></select></label>
+          <label class="field"><span>Time sheet</span><select id="f-sheet"><option value="">Not tracked</option><option value="missing">Not sent yet</option><option value="fix">Needs a fix</option><option value="sent">Sent to your coordinator</option></select></label>
+        </div>
+        <fieldset><legend>Scheduled times (projected)</legend>
+          <div class="grid">
+            <label class="field"><span>Start</span><input id="f-start" type="time" required></label>
+            <label class="field"><span>End</span><input id="f-end" type="time" required></label>
+            <label class="field"><span>Unpaid break (min)</span><input id="f-break" type="number" min="0" step="5" inputmode="numeric"></label>
+          </div>
+        </fieldset>
+        <fieldset><legend>Clocked times (actual) · optional</legend>
+          <div class="grid">
+            <label class="field"><span>Clocked in</span><input id="f-ain" type="time"></label>
+            <label class="field"><span>Clocked out</span><input id="f-aout" type="time"></label>
+            <label class="field"><span>Unpaid break (min)</span><input id="f-abreak" type="number" min="0" step="5" inputmode="numeric"></label>
+            <label class="field"><span>Hours in Dayforce</span><input id="f-df" type="number" min="0" step="0.01" inputmode="decimal"><small>When filled, this is what counts as actual.</small></label>
+          </div>
+        </fieldset>
+        <label class="field full"><span>Note</span><input id="f-note" type="text" maxlength="240" placeholder="Who you covered, swaps, anything to remember"></label>
+        <div class="check" id="repeat-row"><input id="f-repeat" type="checkbox"><label for="f-repeat">Repeat weekly for</label><input id="f-repeat-n" type="number" min="2" max="16" value="4" aria-label="Number of weeks"><span>weeks</span></div>
+        <p class="preview" id="f-preview" aria-live="polite"></p>
+        <p class="err" id="form-err" hidden></p>
+        <div class="row-btns"><button class="btn btn-primary" type="submit">Save shift</button><button class="btn btn-quiet" type="button" data-action="close-form">Cancel</button></div>
+      </form>
+
+      <ul class="list" id="shift-list"><li class="empty">Your shifts will show here once they load.</li></ul>
+    </section>
+  </section>
+
+  <!-- PAY -->
+  <section class="view" id="view-pay" hidden>
+    <section class="panel" aria-labelledby="h-pay">
+      <div class="panel-head"><h2 id="h-pay">Pay periods</h2><button class="link" type="button" data-action="open-settings">Rate and deductions</button></div>
+      <p class="hint" id="pay-hint">Projected uses your scheduled times. Actual uses the times you clocked. Deductions follow CRA’s 2026 payroll formulas for Ontario.</p>
+      <ul class="list" id="period-list"><li class="empty">Pay periods appear once your shifts load.</li></ul>
+    </section>
+  </section>
+
+  <!-- CHANGES -->
+  <section class="view" id="view-changes" hidden>
+    <section class="panel" aria-labelledby="h-changes">
+      <div class="panel-head"><h2 id="h-changes">Schedule changes</h2></div>
+      <p class="hint" id="changes-hint">Every extra shift, drop, swap and new schedule, with what it does to your projected pay. Claude checks your SafeWalk email and files every afternoon and records changes here. Changes you make on this page show up too.</p>
+      <ul class="list" id="change-list"><li class="empty">Changes appear once your data loads.</li></ul>
+    </section>
+  </section>
+
+  <footer class="foot">
+    <span>View-only copy of your Shifts &amp; Pay app, rebuilt after each daily check. Actual pay uses Dayforce hours and pay stubs wherever they’re known.</span>
+    <span>Pay is hours × your rate on that day, plus holiday pay, plus vacation pay. Deductions use CRA payroll formulas for Ontario, so your real cheque can still differ a little.</span>
+  </footer>
+</main>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<!--SNAPSHOT-->
+<script>
+(function () {
+  'use strict';
+  var DEFAULTS = { rate: 17.95, rates: [], rateConfirmed: false, vacPct: 0, deductMode: 'cra', customPct: 0, periodDays: 14, periodsPerYear: 0, anchor: '2026-10-29', paydayOffset: 9, banner: '', lastChecked: '', lastCheckNote: '' };
+  /* Ontario public holidays (Employment Standards Act) */
+  var HOLIDAYS = [
+    ['2026-09-07', 'Labour Day'], ['2026-10-12', 'Thanksgiving'], ['2026-12-25', 'Christmas Day'], ['2026-12-26', 'Boxing Day'],
+    ['2027-01-01', 'New Year’s Day'], ['2027-02-15', 'Family Day'], ['2027-03-26', 'Good Friday'], ['2027-05-24', 'Victoria Day'],
+    ['2027-07-01', 'Canada Day'], ['2027-09-06', 'Labour Day'], ['2027-10-11', 'Thanksgiving'], ['2027-12-25', 'Christmas Day'], ['2027-12-26', 'Boxing Day']
+  ];
+  var LOC = { CL: 'Casa Loma', SJ: 'St. James', HOSP: 'Hospitality', WF: 'Waterfront' };
+  var ROLE_TIMES = { Captain: ['18:15', '22:45'], Walker: ['18:30', '22:30'], Training: ['10:00', '13:00'], Event: ['10:00', '13:00'] };
+  var WF_TIMES = { Captain: ['18:15', '22:15'], Walker: ['18:30', '22:00'] };
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var MONTHS_LONG = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var DOWS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  /* CRA T4127 (July 2026), Ontario, claim code 1 */
+  var TAX = {
+    cppRate: 0.0595, cppBaseRate: 0.0495, cppExempt: 3500, cppMax: 4230.45, cppBaseMax: 3519.45,
+    eiRate: 0.0163, eiMax: 1123.07,
+    fedA: [0, 58523, 117045, 181440, 258482], fedR: [0.14, 0.205, 0.26, 0.29, 0.33], fedK: [0, 3804, 10241, 15685, 26024],
+    bpaf: 16452, cea: 1501, fedLow: 0.14,
+    onA: [0, 53891, 107785, 150000, 220000], onV: [0.0505, 0.0915, 0.1116, 0.1216, 0.1316], onK: [0, 2210, 4376, 5876, 8076],
+    bpaon: 12989, onLow: 0.0505, onS2: 300, surt1: 5818, surt2: 7446
+  };
+  var money = new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' });
+  function $(s) { return document.querySelector(s); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function dayNum(iso) { var p = String(iso).split('-').map(Number); return Math.round(Date.UTC(p[0], p[1] - 1, p[2]) / 864e5); }
+  function isoOf(n) { return new Date(n * 864e5).toISOString().slice(0, 10); }
+  function todayNum() { var t = new Date(); return Math.round(Date.UTC(t.getFullYear(), t.getMonth(), t.getDate()) / 864e5); }
+  function parts(n) { var d = new Date(n * 864e5); return { y: d.getUTCFullYear(), m: d.getUTCMonth(), d: d.getUTCDate(), w: d.getUTCDay() }; }
+  function fmtMD(n) { var p = parts(n); return MONTHS[p.m] + ' ' + p.d; }
+  function fmtWMD(n) { var p = parts(n); return DOWS[p.w] + ', ' + MONTHS[p.m] + ' ' + p.d; }
+  function fmtTime(t) { if (!t) return ''; var a = t.split(':').map(Number), h = a[0], ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; return h + ':' + String(a[1]).padStart(2, '0') + ' ' + ap; }
+  function fmtRange(a, b) { return fmtTime(a) + ' – ' + fmtTime(b); }
+  function fmtHours(mins) { var h = Math.round(mins / 60 * 100) / 100; var s = Number.isInteger(h) ? String(h) : h.toFixed(2).replace(/0$/, ''); return s + ' h'; }
+  function signedHours(mins) { return (mins > 0 ? '+' : mins < 0 ? '−' : '') + fmtHours(Math.abs(mins)); }
+  function signedMoney(v) { return (v > 0.004 ? '+' : v < -0.004 ? '−' : '') + money.format(Math.abs(v)); }
+  function relDays(n) { var d = n - todayNum(); if (d === 0) return 'today'; if (d === 1) return 'tomorrow'; if (d === -1) return 'yesterday'; return d > 1 ? 'in ' + d + ' days' : (-d) + ' days ago'; }
+  function fmtStamp(iso) { var d = new Date(iso); if (isNaN(d)) return ''; var h = d.getHours(), ap = h >= 12 ? 'PM' : 'AM'; return MONTHS[d.getMonth()] + ' ' + d.getDate() + ', ' + (h % 12 || 12) + ':' + String(d.getMinutes()).padStart(2, '0') + ' ' + ap; }
+  function locName(c) { return LOC[c] || ''; }
+  function mm(t) { if (!t) return null; var a = t.split(':').map(Number); return a[0] * 60 + a[1]; }
+  function span(a, b, brk) { var d = mm(b) - mm(a); if (d <= 0) d += 1440; return Math.max(0, d - (Number(brk) || 0)); }
+  function r2(x) { return Math.round(x * 100) / 100; }
+
+  var state = {
+    settings: Object.assign({}, DEFAULTS), shifts: [], payments: {}, changes: [],
+    loaded: false, mode: 'loading', view: 'overview', filter: 'upcoming',
+    editingId: null, confirmDel: null, logOpen: null, payKey: null, payDraft: { amount: '', date: '' }, drafts: {}, busy: false
+  };
+  var refs = null;
+
+  /* ---------- money ---------- */
+  function rateList() {
+    var h = Array.isArray(state.settings.rates) ? state.settings.rates : [];
+    return h.filter(function (x) { return x && /^\d{4}-\d{2}-\d{2}$/.test(x.from || '') && Number(x.rate) > 0; }).slice().sort(function (a, b) { return a.from < b.from ? -1 : a.from > b.from ? 1 : 0; });
+  }
+  function rateOn(day) {
+    var h = rateList(); if (day == null) day = todayNum();
+    if (!h.length) return Number(state.settings.rate) || 0;
+    var r = Number(h[0].rate);
+    h.forEach(function (x) { if (dayNum(x.from) <= day) r = Number(x.rate); });
+    return r;
+  }
+  function vacMul() { return 1 + (Number(state.settings.vacPct) || 0) / 100; }
+  function wagesOf(mins, day) { return mins / 60 * rateOn(day); }
+  function grossOf(mins, day) { return wagesOf(mins, day) * vacMul(); }
+  /* Ontario public holiday pay: wages (plus vacation pay) earned in the 4 work weeks before the holiday's week, divided by 20 */
+  function holidayBase(hday, list) {
+    var wk = hday - parts(hday).w, from = wk - 28, to = wk - 1, w = 0;
+    list.forEach(function (s) { if (s.active && s.day >= from && s.day <= to) w += wagesOf(s.actMins != null ? s.actMins : s.planMins, s.day); });
+    return r2(w * vacMul() / 20);
+  }
+  function bracket(A, th) { var i = 0; for (var j = 0; j < th.length; j++) if (A >= th[j]) i = j; return i; }
+  function ohp(A) {
+    if (A <= 20000) return 0;
+    if (A <= 36000) return Math.min(300, 0.06 * (A - 20000));
+    if (A <= 48000) return Math.min(450, 300 + 0.06 * (A - 36000));
+    if (A <= 72000) return Math.min(600, 450 + 0.25 * (A - 48000));
+    if (A <= 200000) return Math.min(750, 600 + 0.25 * (A - 72000));
+    return Math.min(900, 750 + 0.25 * (A - 200000));
+  }
+  function calc(gross) {
+    var st = state.settings, P = Number(st.periodsPerYear) || Math.round(365 / (Number(st.periodDays) || 14));
+    if (gross <= 0) return { gross: 0, cpp: 0, ei: 0, fed: 0, prov: 0, tax: 0, ded: 0, net: 0, custom: st.deductMode === 'custom' };
+    if (st.deductMode === 'custom') {
+      var d = r2(gross * (Number(st.customPct) || 0) / 100);
+      return { gross: r2(gross), cpp: 0, ei: 0, fed: 0, prov: 0, tax: d, ded: d, net: r2(gross - d), custom: true };
+    }
+    var cpp = Math.max(0, TAX.cppRate * (gross - TAX.cppExempt / P));
+    var cppBase = cpp * TAX.cppBaseRate / TAX.cppRate, f5 = cpp - cppBase;
+    var ei = TAX.eiRate * gross;
+    var A = Math.max(0, P * (gross - f5));
+    var credBase = Math.min(P * cppBase, TAX.cppBaseMax) + Math.min(P * ei, TAX.eiMax);
+    var fi = bracket(A, TAX.fedA);
+    var T3 = TAX.fedR[fi] * A - TAX.fedK[fi] - TAX.fedLow * TAX.bpaf - TAX.fedLow * credBase - Math.min(TAX.fedLow * A, TAX.fedLow * TAX.cea);
+    var fed = Math.max(0, T3) / P;
+    var oi = bracket(A, TAX.onA);
+    var T4 = Math.max(0, TAX.onV[oi] * A - TAX.onK[oi] - TAX.onLow * TAX.bpaon - TAX.onLow * credBase);
+    var V1 = 0.20 * Math.max(0, T4 - TAX.surt1) + 0.36 * Math.max(0, T4 - TAX.surt2);
+    var S = Math.min(T4 + V1, Math.max(0, 2 * TAX.onS2 - (T4 + V1)));
+    var prov = Math.max(0, T4 + V1 - S + ohp(A)) / P;
+    var out = { gross: r2(gross), cpp: r2(cpp), ei: r2(ei), fed: r2(fed), prov: r2(prov), custom: false };
+    out.tax = r2(out.fed + out.prov); out.ded = r2(out.cpp + out.ei + out.tax); out.net = r2(out.gross - out.ded);
+    return out;
+  }
+
+  /* ---------- derived data ---------- */
+  function derive(s) {
+    var day = dayNum(s.date), p = parts(day);
+    var ps = mm(s.start) || 0, pe = mm(s.end) || 0, overnight = pe <= ps;
+    var pStart = new Date(p.y, p.m, p.d, 0, ps).getTime();
+    var pEnd = new Date(p.y, p.m, p.d + (overnight ? 1 : 0), 0, pe).getTime();
+    var planMins = span(s.start || '00:00', s.end || '00:00', s.breakMin);
+    var hasIn = !!s.actualIn, hasOut = !!s.actualOut;
+    var hasDf = s.dfHours != null && s.dfHours !== '' && !isNaN(Number(s.dfHours));
+    var actMins = hasDf ? Math.round(Number(s.dfHours) * 60) : (hasIn && hasOut ? span(s.actualIn, s.actualOut, s.actualBreak) : null);
+    var now = Date.now(), active = s.status === 'scheduled';
+    var phase = pEnd <= now ? 'past' : (pStart <= now ? 'now' : 'future');
+    if (active && hasIn && !hasOut && !hasDf && day === todayNum()) phase = 'now';
+    if (active && (hasOut || hasDf) && phase === 'now') phase = 'past';
+    var needsTimes = active && phase === 'past' && actMins === null;
+    return Object.assign({}, s, { day: day, planMins: planMins, actMins: actMins, overnight: overnight, pStart: pStart, pEnd: pEnd, phase: phase, active: active, needsTimes: needsTimes, hasIn: hasIn, hasDf: hasDf,
+      planPay: grossOf(planMins, day), actPay: actMins == null ? null : grossOf(actMins, day) });
+  }
+  function periodOf(day) {
+    var st = state.settings, L = Number(st.periodDays) || 14, a = dayNum(st.anchor || DEFAULTS.anchor);
+    var start = a + Math.floor((day - a) / L) * L, end = start + L - 1;
+    return { key: isoOf(start), start: start, end: end, payday: end + (Number(st.paydayOffset) || 0) };
+  }
+  function buildPeriods(list) {
+    var map = {}, t = todayNum();
+    function get(day) { var p = periodOf(day); if (!map[p.key]) map[p.key] = Object.assign(p, { shifts: [], changes: [] }); return map[p.key]; }
+    list.forEach(function (s) { if (s.active) get(s.day).shifts.push(s); });
+    state.changes.forEach(function (c) { if (/^\d{4}-\d{2}-\d{2}$/.test(c.shiftDate || '')) get(dayNum(c.shiftDate)).changes.push(c); });
+    Object.keys(state.payments).forEach(function (k) { if (/^\d{4}-\d{2}-\d{2}$/.test(k)) get(dayNum(k)); });
+    var hols = {};
+    HOLIDAYS.forEach(function (h) {
+      var d = dayNum(h[0]), amt = holidayBase(d, list);
+      if (amt > 0) { var p = get(d); (hols[p.key] = hols[p.key] || []).push({ day: d, name: h[1], amount: amt }); }
+    });
+    get(t);
+    return Object.keys(map).map(function (k) { return map[k]; }).sort(function (x, y) { return y.start - x.start; }).map(function (p) {
+      var projMins = 0, actMins = 0, expMins = 0, logged = 0, needs = 0, live = 0, projW = 0, actW = 0, expW = 0;
+      p.shifts.forEach(function (s) {
+        projMins += s.planMins; projW += wagesOf(s.planMins, s.day);
+        if (s.actMins != null) { actMins += s.actMins; actW += wagesOf(s.actMins, s.day); logged++; }
+        if (s.needsTimes) needs++;
+        if (s.phase === 'now') live++;
+        expMins += s.actMins != null ? s.actMins : s.planMins;
+        expW += wagesOf(s.actMins != null ? s.actMins : s.planMins, s.day);
+      });
+      var hol = hols[p.key] || [], holPay = r2(hol.reduce(function (a, h) { return a + h.amount; }, 0));
+      var holDone = r2(hol.reduce(function (a, h) { return a + (h.day <= t ? h.amount : 0); }, 0));
+      function pay(w, hp) { w = r2(w); var base = r2(w + hp), vac = r2(base * (vacMul() - 1)); return { wages: w, holAmt: hp, vac: vac, gross: r2(base + vac) }; }
+      var projP = pay(projW, holPay), actP = pay(actW, holDone), expP = pay(expW, holPay);
+      var deltaMins = p.changes.reduce(function (a, c) { return a + (Number(c.deltaMins) || 0); }, 0);
+      var deltaPay = p.changes.reduce(function (a, c) { return a + grossOf(Number(c.deltaMins) || 0, dayNum(c.shiftDate)); }, 0);
+      var paid = state.payments[p.key] || null, status;
+      if (paid) status = 'paid';
+      else if (t < p.start) status = 'upcoming';
+      else if (t <= p.end) status = 'current';
+      else if (t < p.payday) status = 'pending';
+      else status = expMins > 0 ? 'check' : 'none';
+      return Object.assign(p, { projMins: projMins, actMins: actMins, expMins: expMins, logged: logged, needs: needs, live: live, deltaMins: deltaMins, deltaPay: deltaPay,
+        hol: hol, holPay: holPay, projP: projP, actP: actP, expP: expP,
+        proj: calc(projP.gross), act: calc(actP.gross), exp: calc(expP.gross), paid: paid, status: status });
+    });
+  }
+
+  /* ---------- small renderers ---------- */
+  function chip(text, cls) { return '<span class="chip ' + cls + '">' + esc(text) + '</span>'; }
+  function setStat(id, value, sub, cls) {
+    var el = document.getElementById(id), v = el.querySelector('.v'), s = el.querySelector('.s');
+    v.textContent = value; v.className = 'v' + (cls ? ' ' + cls : ''); s.textContent = sub;
+  }
+  function roleChip(r) { return r ? '<span class="chip c-role r-' + esc(String(r).toLowerCase()) + '">' + esc(r) + '</span>' : ''; }
+
+  function loggerHtml(s) {
+    var d = state.drafts[s.id];
+    if (!d) {
+      d = { in: s.actualIn || s.start || '', out: s.actualOut || (s.phase === 'now' ? '' : (s.end || '')), brk: String(s.actualBreak != null ? s.actualBreak : (s.breakMin || 0)) };
+      state.drafts[s.id] = d;
+    }
+    d.day = s.day;
+    var id = esc(s.id);
+    var prev = loggerPreview(d);
+    return '<div class="logger" data-id="' + id + '">' +
+      '<label class="field"><span>Clocked in</span><input type="time" id="li-' + id + '" data-draft="in" data-id="' + id + '" value="' + esc(d.in) + '"></label>' +
+      '<label class="field"><span>Clocked out</span><input type="time" id="lo-' + id + '" data-draft="out" data-id="' + id + '" value="' + esc(d.out) + '"></label>' +
+      '<label class="field"><span>Unpaid break (min)</span><input type="number" min="0" step="5" inputmode="numeric" id="lb-' + id + '" data-draft="brk" data-id="' + id + '" value="' + esc(d.brk) + '"></label>' +
+      '<div class="row-btns"><button class="btn btn-primary" type="button" data-action="log-save" data-id="' + id + '">' + (s.phase === 'now' && !d.out ? 'Save clock-in' : 'Save times') + '</button>' +
+      (s.phase !== 'now' ? '<button class="link" type="button" data-action="log-plan" data-id="' + id + '">Same as scheduled</button>' : '') + '</div>' +
+      '<p class="lp" id="lp-' + id + '">' + esc(prev) + '</p></div>';
+  }
+  function loggerPreview(d) {
+    if (!d.in || !d.out) return d.in ? 'Clocked in at ' + fmtTime(d.in) + '. Add your clock-out time after the shift.' : 'Enter the times from the Dayforce clock.';
+    if (d.in === d.out) return 'Clock-in and clock-out can’t be the same time.';
+    var mins = span(d.in, d.out, d.brk), g = grossOf(mins, d.day), c = calc(g);
+    return fmtHours(mins) + ' · ' + money.format(g) + ' gross · about ' + money.format(c.net) + ' after deductions';
+  }
+
+  /* ---------- views ---------- */
+  function renderHeader() {
+    var st = state.settings;
+    $('#rate-pill').innerHTML = esc(money.format(rateOn(todayNum()))) + '/h' + (Number(st.vacPct) ? ' + ' + esc(String(Number(st.vacPct))) + '% vac' : '') + (st.rateConfirmed ? '' : ' · <span class="flag">placeholder</span>');
+    var cp = $('#check-pill');
+    if (st.lastChecked) { cp.hidden = false; cp.innerHTML = '<span class="dot"></span>Claude checked ' + esc(fmtStamp(st.lastChecked)); cp.title = st.lastCheckNote || ''; }
+    else cp.hidden = true;
+  }
+  function renderBanners() {
+    var html = '';
+    if (state.mode === 'local') html += '<div class="banner warn"><p>Changes on this page aren’t saved in this view. Open it in Claude while signed in to keep your shifts.</p></div>';
+    if (state.mode === 'snapshot') html += '<div class="banner"><p><strong>View-only copy</strong>, updated ' + esc(fmtStamp(state.builtAt) || 'recently') + '. To log times or change anything, use the app in Claude or message Claude.</p></div>';
+    if (state.loaded && !state.settings.rateConfirmed) html += '<div class="banner warn"><p><strong>Pay uses a placeholder rate</strong> (Ontario minimum wage, $17.95/h). Your real rate is in your employment contract. Set it once and every number updates.</p><button class="link" type="button" data-action="open-settings">Set rate</button></div>';
+    if (state.settings.banner) html += '<div class="banner"><p>' + esc(state.settings.banner) + '</p><button class="link" type="button" data-action="dismiss-banner">Dismiss</button></div>';
+    $('#banners').innerHTML = html; $('#banners').hidden = !html;
+  }
+  function renderTabs(list) {
+    Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (b) { b.setAttribute('aria-selected', String(b.getAttribute('data-view') === state.view)); });
+    ['overview', 'shifts', 'pay', 'changes'].forEach(function (v) { document.getElementById('view-' + v).hidden = v !== state.view; });
+    var n = list.filter(function (s) { return s.needsTimes; }).length, ct = $('#tab-ct-shifts');
+    ct.hidden = !n; ct.textContent = n; ct.title = n + ' shifts need clock times';
+  }
+
+  function renderAction(list) {
+    var el = $('#action');
+    if (!state.loaded) { el.innerHTML = ''; return; }
+    var live = list.filter(function (s) { return s.active && s.phase === 'now'; });
+    var needs = list.filter(function (s) { return s.needsTimes; }).sort(function (a, b) { return b.pStart - a.pStart; });
+    if (!live.length && !needs.length) { el.innerHTML = ''; return; }
+    var html = '<section class="action" aria-labelledby="h-action"><h2 id="h-action">' + (live.length ? 'Log tonight’s times' : 'Log your clock times') + '</h2>';
+    live.concat(needs.slice(0, 3)).forEach(function (s) {
+      html += '<div class="log-item"><div class="log-title">' + esc(fmtWMD(s.day)) + ' · ' + esc(locName(s.loc) || s.role || 'Shift') + ' ' + roleChip(s.role) +
+        (s.phase === 'now' ? chip(s.hasIn ? 'On shift' : 'Now', 'c-now') : '') +
+        '<span class="sub">Scheduled ' + esc(fmtRange(s.start, s.end)) + '</span></div>' + loggerHtml(s) + '</div>';
+    });
+    if (needs.length > 3) html += '<p class="hint" style="margin:0">' + (needs.length - 3) + ' more shifts need times. <button class="link" type="button" data-action="go-needs">See them all</button></p>';
+    el.innerHTML = html + '</section>';
+  }
+
+  function renderSummary(list, periods) {
+    if (!state.loaded) return;
+    var t = todayNum();
+    var due = periods.filter(function (p) { return !p.paid && p.payday >= t && p.expMins > 0; }).sort(function (a, b) { return a.payday - b.payday; })[0];
+    if (due) setStat('t-pay', money.format(due.exp.net), fmtWMD(due.payday) + ' (' + relDays(due.payday) + ') · take-home est. on ' + money.format(due.exp.gross) + ' gross · ' + fmtMD(due.start) + '–' + fmtMD(due.end) + (due.needs ? ' · ' + due.needs + ' shift(s) still need times' : ''));
+    else setStat('t-pay', '—', 'No unpaid shifts in an upcoming pay period');
+    var cur = periods.find(function (p) { return t >= p.start && t <= p.end; });
+    if (cur) {
+      setStat('t-proj', money.format(cur.proj.gross), fmtHours(cur.projMins) + ' on the schedule · ~' + money.format(cur.proj.net) + ' take-home' + (cur.deltaMins ? ' · ' + signedHours(cur.deltaMins) + ' from changes' : ''));
+      setStat('t-act', money.format(cur.act.gross), fmtHours(cur.actMins) + ' clocked · ~' + money.format(cur.act.net) + ' take-home' + (cur.needs ? ' · ' + cur.needs + ' need times' : ''));
+    }
+    var todo = list.filter(function (s) { return s.active && s.phase !== 'future' && (s.sheet === 'missing' || s.sheet === 'fix'); }).sort(function (a, b) { return a.day - b.day; });
+    if (todo.length) setStat('t-sheets', String(todo.length), todo.map(function (s) { return fmtMD(s.day) + ' ' + (s.loc || '') + (s.sheet === 'fix' ? ' (fix)' : ''); }).join(' · '), 'alert');
+    else setStat('t-sheets', '0', 'All caught up', 'calm');
+  }
+
+  function niceStep(x) { var p = Math.pow(10, Math.floor(Math.log10(Math.max(x, 1)))), f = x / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p; }
+  function renderChart(periods) {
+    var el = $('#chart');
+    if (!state.loaded) { el.innerHTML = '<p class="empty">Loading…</p>'; return; }
+    var t = todayNum();
+    var ps = periods.filter(function (p) { return p.projMins > 0 || p.actMins > 0; }).sort(function (a, b) { return a.start - b.start; }).slice(-8);
+    if (!ps.length) { el.innerHTML = '<p class="empty">No pay periods with shifts yet.</p>'; return; }
+    var W = 640, H = 250, L = 52, R = 10, T = 14, B = 40;
+    var max = Math.max.apply(null, ps.map(function (p) { return Math.max(p.proj.gross, p.act.gross); }).concat([1]));
+    var step = niceStep(max / 4), top = Math.ceil(max / step) * step;
+    function y(v) { return T + (H - T - B) * (1 - v / top); }
+    var n = ps.length, slot = (W - L - R) / n, bw = Math.min(24, slot * 0.3);
+    var svg = '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Projected and actual gross pay for each pay period">';
+    for (var v = 0; v <= top + 0.001; v += step) {
+      svg += '<line class="grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v).toFixed(1) + '" y2="' + y(v).toFixed(1) + '"></line>';
+      svg += '<text x="' + (L - 8) + '" y="' + (y(v) + 4).toFixed(1) + '" text-anchor="end">$' + Math.round(v) + '</text>';
+    }
+    ps.forEach(function (p, i) {
+      var cx = L + slot * i + slot / 2, cur = t >= p.start && t <= p.end;
+      var hp = H - B - y(p.proj.gross), ha = H - B - y(p.act.gross);
+      svg += '<rect class="b-proj" x="' + (cx - bw - 2).toFixed(1) + '" y="' + y(p.proj.gross).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + Math.max(0, hp).toFixed(1) + '"><title>Projected ' + esc(money.format(p.proj.gross)) + ' (' + fmtHours(p.projMins) + ')</title></rect>';
+      svg += '<rect class="b-act" x="' + (cx + 2).toFixed(1) + '" y="' + y(p.act.gross).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + Math.max(0, ha).toFixed(1) + '"><title>Actual ' + esc(money.format(p.act.gross)) + ' (' + fmtHours(p.actMins) + ')</title></rect>';
+      svg += '<text x="' + cx.toFixed(1) + '" y="' + (H - B + 16) + '" text-anchor="middle"' + (cur ? ' class="cur"' : '') + '>' + fmtMD(p.start) + '</text>';
+      svg += '<text x="' + cx.toFixed(1) + '" y="' + (H - B + 30) + '" text-anchor="middle">' + (cur ? 'now' : 'paid ' + fmtMD(p.payday)) + '</text>';
+    });
+    el.innerHTML = svg + '</svg>';
+  }
+
+  function renderComing(list) {
+    var el = $('#coming');
+    if (!state.loaded) { el.innerHTML = '<p class="empty">Loading…</p>'; return; }
+    var up = list.filter(function (s) { return s.active && s.phase !== 'past'; }).sort(function (a, b) { return a.pStart - b.pStart; }).slice(0, 6);
+    if (!up.length) { el.innerHTML = '<p class="empty"><strong>Nothing booked.</strong> New shifts appear here when the next schedule comes out.</p>'; return; }
+    el.innerHTML = up.map(function (s) {
+      return '<div class="mini"><span class="md">' + esc(fmtWMD(s.day)) + '</span><span class="mm">' + esc(fmtRange(s.start, s.end)) + ' ' + roleChip(s.role) + '<span class="meta">' + esc([locName(s.loc), relDays(s.day)].filter(Boolean).join(' · ')) + '</span></span><span class="mv">' + esc(money.format(s.planPay)) + '</span></div>';
+    }).join('');
+  }
+
+  var KIND = { extra: ['Extra shift', 'c-good'], dropped: ['Dropped', 'c-bad'], swap: ['Swap', 'c-info'], schedule: ['New schedule', 'c-info'], training: ['Training', 'c-wait'], restored: ['Restored', 'c-good'], changed: ['Time change', 'c-wait'], note: ['Note', 'c-muted'] };
+  function changeRow(c) {
+    var k = KIND[c.kind] || KIND.note, d = Number(c.deltaMins) || 0, dp = grossOf(d, c.shiftDate ? dayNum(c.shiftDate) : null);
+    var when = c.at ? fmtStamp(c.at).replace(/, \d+:\d+ [AP]M$/, '') : '';
+    return '<li class="chg"><div class="chg-when">' + esc(when) + '<span>' + esc(c.by ? 'by ' + c.by : '') + '</span></div>' +
+      '<div class="chg-body"><div class="chips">' + chip(k[0], k[1]) + (c.shiftDate ? '<span class="meta">for ' + esc(fmtWMD(dayNum(c.shiftDate))) + '</span>' : '') + '</div><div>' + esc(c.text) + '</div></div>' +
+      '<div class="chg-delta ' + (d > 0 ? 'plus' : d < 0 ? 'minus' : '') + '">' + (d ? esc(signedHours(d)) + '<span>' + esc(signedMoney(dp)) + ' gross</span>' : '<span>no change</span>') + '</div></li>';
+  }
+  function sortedChanges() { return state.changes.slice().sort(function (a, b) { return String(b.at).localeCompare(String(a.at)); }); }
+  function renderChanges() {
+    var all = sortedChanges();
+    var el = $('#change-list'), rec = $('#recent');
+    if (!state.loaded) { el.innerHTML = rec.innerHTML = '<li class="empty">Loading…</li>'; return; }
+    el.innerHTML = all.length ? all.map(changeRow).join('') : '<li class="empty"><strong>No changes yet.</strong> Extra shifts, drops and swaps will appear here.</li>';
+    rec.innerHTML = all.length ? all.slice(0, 5).map(changeRow).join('') : '<li class="empty">No changes yet.</li>';
+    var st = state.settings;
+    $('#changes-hint').textContent = 'Every extra shift, drop, swap and new schedule, with what it does to your projected pay. Claude checks your SafeWalk email and files every afternoon and records changes here' + (st.lastChecked ? ' (last check: ' + fmtStamp(st.lastChecked) + (st.lastCheckNote ? '. ' + st.lastCheckNote : '') + ')' : '') + '. Changes you make on this page show up too.';
+  }
+
+  function filterList(list) {
+    var f = state.filter;
+    function byStartAsc(a, b) { return a.pStart - b.pStart; } function byStartDesc(a, b) { return b.pStart - a.pStart; }
+    if (f === 'upcoming') return list.filter(function (s) { return s.phase !== 'past'; }).sort(byStartAsc);
+    if (f === 'needs') return list.filter(function (s) { return s.needsTimes; }).sort(byStartDesc);
+    if (f === 'past') return list.filter(function (s) { return s.phase === 'past' && s.active; }).sort(byStartDesc);
+    if (f === 'sheets') return list.filter(function (s) { return s.active && s.phase !== 'future' && (s.sheet === 'missing' || s.sheet === 'fix'); }).sort(byStartDesc);
+    return list.slice().sort(byStartDesc);
+  }
+  function shiftRow(s) {
+    var p = parts(s.day), id = esc(s.id);
+    var cls = 'shift' + (!s.active ? ' is-off' : '') + (s.phase === 'now' && s.active ? ' is-now' : '');
+    var status = s.status === 'swapped' ? chip('Swapped away', 'c-muted') : s.status === 'cancelled' ? chip('Dropped', 'c-muted')
+      : s.phase === 'now' ? chip('On shift', 'c-now') : s.phase === 'future' ? chip('Upcoming', 'c-info') : s.needsTimes ? chip('Needs times', 'c-bad') : chip('Worked', 'c-good');
+    var sheet = '';
+    if (s.active && s.phase !== 'future') {
+      if (s.sheet === 'missing') sheet = chip('Time sheet not sent', 'c-bad');
+      else if (s.sheet === 'fix') sheet = chip('Time sheet needs fix', 'c-wait');
+    }
+    var origin = (s.origin === 'extra' ? chip('Extra', 'c-good') : '') + (s.dfMissing && s.active ? chip('Not in Dayforce', 'c-wait') : '');
+    var actLine;
+    if (s.hasDf) actLine = '<span class="tv">' + esc(fmtHours(s.actMins)) + ' in Dayforce · ' + esc(money.format(s.actPay)) + '</span>' + (s.actualIn && s.actualOut ? ' <span class="meta">(time sheet said ' + esc(fmtRange(s.actualIn, s.actualOut)) + ')</span>' : '');
+    else if (s.actMins != null) actLine = '<span class="tv">' + esc(fmtRange(s.actualIn, s.actualOut)) + ' · ' + esc(fmtHours(s.actMins)) + ' · ' + esc(money.format(s.actPay)) + '</span>' + (s.actualSource && s.actualSource !== 'you' ? ' <span class="meta">(' + esc(s.actualSource) + ')</span>' : '');
+    else if (s.hasIn) actLine = '<span class="tv">In at ' + esc(fmtTime(s.actualIn)) + ', not clocked out yet</span>';
+    else if (!s.active) actLine = '<span class="meta">Not worked</span>';
+    else if (s.phase === 'future') actLine = '<span class="meta">After the shift</span>';
+    else actLine = '<span class="missing">Not logged</span>';
+    var times = '<div class="times"><span class="tl">Sched.</span><span class="tv">' + esc(fmtRange(s.start, s.end)) + ' · ' + esc(fmtHours(s.planMins)) + ' · ' + esc(money.format(s.planPay)) + '</span>' +
+      '<span class="tl">Actual</span><span>' + actLine + '</span></div>';
+    var meta = [locName(s.loc) || (s.role === 'Training' || s.role === 'Event' ? '' : 'Campus not confirmed'), s.source ? 'from ' + s.source : ''].filter(Boolean).join(' · ');
+    var actions;
+    if (state.confirmDel === s.id) {
+      actions = '<div class="confirm"><span>Delete this shift?</span><button class="link danger" type="button" data-action="confirm-delete" data-id="' + id + '">Delete</button><button class="link" type="button" data-action="keep">Keep</button></div>';
+    } else {
+      actions = '<div class="actions">' +
+        (s.active && s.phase !== 'future' ? '<button class="link" type="button" data-action="log-open" data-id="' + id + '">' + (state.logOpen === s.id ? 'Close' : (s.actMins != null ? 'Edit times' : 'Log times')) + '</button>' : '') +
+        ((s.sheet === 'missing' || s.sheet === 'fix') && s.active && s.phase !== 'future' ? '<button class="link" type="button" data-action="sheet-sent" data-id="' + id + '">Time sheet sent</button>' : '') +
+        '<button class="link" type="button" data-action="edit" data-id="' + id + '">Edit</button>' +
+        (!s.active ? '<button class="link" type="button" data-action="restore" data-id="' + id + '">Restore</button>' : (s.phase !== 'past' ? '<button class="link" type="button" data-action="drop" data-id="' + id + '">Drop</button>' : '')) +
+        '<button class="link danger" type="button" data-action="ask-delete" data-id="' + id + '">Delete</button></div>';
+    }
+    return '<li class="' + cls + '">' +
+      '<div class="dblock" aria-hidden="true"><span class="dw">' + DOWS[p.w] + '</span><span class="dn">' + p.d + '</span><span class="dm">' + MONTHS[p.m] + '</span></div>' +
+      '<div class="what"><span class="sr">' + esc(fmtWMD(s.day)) + '</span><div class="when-line"><span class="t">' + esc(locName(s.loc) || s.role || 'Shift') + '</span>' + roleChip(s.role) + origin + '</div>' + times +
+      (meta ? '<div class="meta">' + esc(meta) + '</div>' : '') + (s.note ? '<div class="note">' + esc(s.note) + '</div>' : '') + '</div>' +
+      '<div class="side"><div class="chips">' + status + sheet + '</div>' + actions + '</div>' +
+      (state.logOpen === s.id ? '<div class="inline-log">' + loggerHtml(s) + '</div>' : '') + '</li>';
+  }
+  function renderShifts(list) {
+    var counts = {
+      upcoming: list.filter(function (s) { return s.phase !== 'past'; }).length,
+      needs: list.filter(function (s) { return s.needsTimes; }).length,
+      past: list.filter(function (s) { return s.phase === 'past' && s.active; }).length,
+      sheets: list.filter(function (s) { return s.active && s.phase !== 'future' && (s.sheet === 'missing' || s.sheet === 'fix'); }).length,
+      all: list.length
+    };
+    Array.prototype.forEach.call(document.querySelectorAll('#filters button'), function (b) {
+      var f = b.getAttribute('data-filter'); b.setAttribute('aria-pressed', String(f === state.filter));
+      b.querySelector('.ct').textContent = state.loaded ? ' ' + counts[f] : '';
+    });
+    var el = $('#shift-list');
+    if (!state.loaded) { el.innerHTML = '<li class="empty">Loading your shifts…</li>'; return; }
+    var rows = filterList(list);
+    if (!rows.length) {
+      el.innerHTML = '<li class="empty">' + ({ upcoming: '<strong>No upcoming shifts.</strong> When the next schedule comes out, they’ll appear here.', needs: '<strong>All logged.</strong> Every past shift has its clock times.', past: '<strong>No worked shifts yet.</strong>', sheets: '<strong>Nothing to send.</strong> Every captain shift has its time sheet in.', all: '<strong>No shifts yet.</strong> Add your first shift to start tracking.' })[state.filter] + '</li>';
+      return;
+    }
+    var html = '', last = null;
+    rows.forEach(function (s) { var p = parts(s.day), k = p.y + '-' + p.m; if (k !== last) { html += '<li class="group">' + MONTHS_LONG[p.m] + ' ' + p.y + '</li>'; last = k; } html += shiftRow(s); });
+    el.innerHTML = html;
+  }
+
+  function fmtH(h) { var x = Math.round(h * 100) / 100; return (Number.isInteger(x) ? String(x) : x.toFixed(2).replace(/0$/, '')) + ' h'; }
+  function dedTable(p) {
+    var stub = p.paid && p.paid.stub ? p.paid.stub : null, hasAct = p.actMins > 0 || p.logged > 0;
+    var cols = stub ? [{ h: 'Estimate', mins: p.expMins, P: p.expP, C: p.exp }, { h: 'Pay stub', s: stub }]
+      : [{ h: 'Projected', mins: p.projMins, P: p.projP, C: p.proj }, hasAct ? { h: 'Actual', mins: p.actMins, P: p.actP, C: p.act } : { h: 'Actual', none: true }];
+    function val(c, key) {
+      if (c.none) return null;
+      if (c.s) {
+        if (key === 'ded') return ['cpp', 'ei', 'tax'].reduce(function (a, k) { return a + (Number(c.s[k]) || 0); }, 0);
+        var v = c.s[key]; return v == null || v === '' || isNaN(Number(v)) ? null : Number(v);
+      }
+      return { hours: c.mins / 60, wages: c.P.wages, holiday: c.P.holAmt, vac: c.P.vac, gross: c.C.gross, cpp: c.C.cpp, ei: c.C.ei, tax: c.C.tax, ded: c.C.ded, net: c.C.net }[key];
+    }
+    var m = function (x) { return money.format(x); }, neg = function (x) { return x ? '−' + money.format(x) : money.format(0); };
+    function row(label, key, fmt, cls) {
+      return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><th scope="row">' + label + '</th>' + cols.map(function (c) {
+        var v = val(c, key); return v == null ? '<td class="dim">—</td>' : '<td>' + fmt(v) + '</td>';
+      }).join('') + '</tr>';
+    }
+    var vacPct = Number(state.settings.vacPct) || 0, hasHol = p.holPay > 0 || (stub && Number(stub.holiday) > 0);
+    var html = '<div class="ded-wrap"><table class="ded"><thead><tr><th></th>' + cols.map(function (c) { return '<th scope="col">' + c.h + '</th>'; }).join('') + '</tr></thead><tbody>';
+    html += row('Hours', 'hours', fmtH);
+    if (hasHol || vacPct) html += row('Pay for hours', 'wages', m);
+    if (hasHol) html += row('Holiday pay', 'holiday', m);
+    if (vacPct) html += row('Vacation pay (' + esc(String(vacPct)) + '%)', 'vac', m);
+    html += row('Gross pay', 'gross', m);
+    if (p.proj.custom) html += row('Deductions (' + (Number(state.settings.customPct) || 0) + '%)', 'ded', neg);
+    else { html += row('CPP', 'cpp', neg); html += row('EI', 'ei', neg); html += row('Income tax', 'tax', neg); }
+    html += row('Take-home', 'net', m, 'net');
+    return html + '</tbody></table></div>';
+  }
+  function periodRow(p) {
+    var t = todayNum();
+    var chipHtml = { paid: chip('Paid', 'c-good'), upcoming: chip('Upcoming', 'c-info'), current: chip('In progress', 'c-now'), pending: chip('Pays ' + fmtMD(p.payday), 'c-info'), check: chip(p.payday === t ? 'Payday today' : 'Check deposit', 'c-wait'), none: chip('No shifts', 'c-muted') }[p.status];
+    var notes = [];
+    if (p.deltaMins) notes.push('<span class="' + (p.deltaMins > 0 ? 'plus' : 'minus') + '">' + esc(signedHours(p.deltaMins) + ' (' + signedMoney(p.deltaPay) + ')') + '</span> from ' + p.changes.length + ' schedule change' + (p.changes.length === 1 ? '' : 's') + '. <button class="link" type="button" data-action="view" data-view="changes">See changes</button>');
+    if (p.hol.length && !(p.paid && p.paid.stub)) notes.push('Holiday pay for ' + esc(p.hol.map(function (h) { return h.name + ' (' + fmtMD(h.day) + ')'; }).join(' and ')) + ' is an estimate: Ontario pays 1/20 of what you earned in the 4 weeks before the holiday week.');
+    if (p.needs) notes.push('<span class="minus">' + p.needs + ' shift' + (p.needs === 1 ? '' : 's') + ' need clock times</span>, so Actual is incomplete. <button class="link" type="button" data-action="go-needs">Log times</button>');
+    if (p.logged && t > p.end && !(p.paid && p.paid.stub)) {
+      var diff = p.act.gross - p.proj.gross;
+      if (!p.needs && Math.abs(diff) >= 0.01) notes.push('Actual is ' + esc(signedMoney(diff)) + ' vs. projected.');
+    }
+    if (p.paid) {
+      var rec = Number(p.paid.received) || 0, gap = rec - p.exp.net;
+      notes.push('Deposit ' + esc(money.format(rec)) + (p.paid.paidOn ? ' on ' + esc(fmtMD(dayNum(p.paid.paidOn))) : '') + ' · estimate was ' + esc(money.format(p.exp.net)) + ' (' + esc(signedMoney(gap)) + ').');
+    }
+    var act = '';
+    if (state.payKey === p.key) {
+      act = '<div class="payform"><label class="field"><span>Amount deposited ($)</span><input id="pay-amt" type="number" step="0.01" min="0" inputmode="decimal" value="' + esc(state.payDraft.amount) + '"></label>' +
+        '<label class="field"><span>Date it landed</span><input id="pay-date" type="date" value="' + esc(state.payDraft.date) + '"></label>' +
+        '<div class="row-btns"><button class="btn btn-primary" type="button" data-action="pay-save" data-key="' + p.key + '">Save</button><button class="btn btn-quiet" type="button" data-action="pay-cancel">Cancel</button></div></div>';
+    } else if (p.paid) {
+      act = '<div class="actions" style="justify-content:flex-start"><button class="link" type="button" data-action="pay-open" data-key="' + p.key + '">Edit deposit</button><button class="link" type="button" data-action="pay-undo" data-key="' + p.key + '">Mark not paid</button></div>';
+    } else if (t > p.end && p.expMins > 0) {
+      act = '<div class="actions" style="justify-content:flex-start"><button class="link" type="button" data-action="pay-open" data-key="' + p.key + '">Record the deposit</button></div>';
+    }
+    return '<li class="period"><div class="p-top"><span class="p-range">' + fmtMD(p.start) + ' – ' + fmtMD(p.end) + '</span>' + chipHtml + '</div>' +
+      '<div class="p-sub">Payday ' + fmtWMD(p.payday) + ' · ' + p.shifts.length + (p.shifts.length === 1 ? ' shift' : ' shifts') + '</div>' + dedTable(p) +
+      (notes.length ? '<div class="p-notes">' + notes.map(function (n) { return '<div>' + n + '</div>'; }).join('') + '</div>' : '') + act + '</li>';
+  }
+  function renderPeriods(periods) {
+    var el = $('#period-list');
+    if (!state.loaded) { el.innerHTML = '<li class="empty">Loading pay periods…</li>'; return; }
+    var rows = periods.filter(function (p) { return p.shifts.length || p.paid || p.status === 'current' || p.changes.length; });
+    el.innerHTML = rows.map(periodRow).join('');
+    $('#pay-hint').textContent = state.settings.deductMode === 'custom'
+      ? 'Projected uses your scheduled times. Actual uses the times you clocked. Deductions use your own ' + (Number(state.settings.customPct) || 0) + '%.'
+      : 'Projected uses your scheduled times. Actual uses your Dayforce hours when they’re in, otherwise the times you clocked. Both include holiday pay and vacation pay. Paid periods show the real pay stub next to the estimate.';
+  }
+
+  function render() {
+    var ae = document.activeElement, focusId = ae && ae.id, selEnd = null;
+    try { selEnd = ae && typeof ae.selectionEnd === 'number' ? ae.selectionEnd : null; } catch (e) {}
+    var list = state.shifts.map(derive);
+    var periods = buildPeriods(list);
+    renderHeader(); renderBanners(); renderTabs(list);
+    renderAction(list); renderSummary(list, periods); renderChart(periods); renderComing(list);
+    renderChanges(); renderShifts(list); renderPeriods(periods);
+    if (focusId && /^(li-|lo-|lb-|pay-)/.test(focusId)) {
+      var f = document.getElementById(focusId);
+      if (f) { f.focus(); try { if (selEnd != null) f.setSelectionRange(selEnd, selEnd); } catch (e) {} }
+    }
+  }
+
+  /* ---------- storage ---------- */
+  function rid() { return 'x' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+  var store = {
+    setShift: function (id, data) {
+      if (refs) { var ref = id ? refs.shifts.doc(id) : refs.shifts.doc(); return ref.set(data).then(function () { return ref.id; }); }
+      var nid = id || rid(), i = state.shifts.findIndex(function (s) { return s.id === nid; }), row = Object.assign({ id: nid }, data);
+      if (i >= 0) state.shifts[i] = row; else state.shifts.push(row); return Promise.resolve(nid);
+    },
+    patchShift: function (id, patch) { if (refs) return refs.shifts.doc(id).update(patch); var s = state.shifts.find(function (x) { return x.id === id; }); if (s) Object.assign(s, patch); return Promise.resolve(); },
+    delShift: function (id) { if (refs) return refs.shifts.doc(id).delete(); state.shifts = state.shifts.filter(function (s) { return s.id !== id; }); return Promise.resolve(); },
+    addChange: function (data) { var c = Object.assign({ at: new Date().toISOString(), by: 'you' }, data); if (refs) return refs.changes.doc().set(c); state.changes = state.changes.concat([Object.assign({ id: rid() }, c)]); return Promise.resolve(); },
+    setPayment: function (key, data) { if (refs) return refs.payments.doc(key).set(data); state.payments = Object.assign({}, state.payments); state.payments[key] = data; return Promise.resolve(); },
+    delPayment: function (key) { if (refs) return refs.payments.doc(key).delete(); state.payments = Object.assign({}, state.payments); delete state.payments[key]; return Promise.resolve(); },
+    setSettings: function (data) { if (refs) return refs.base.set(data); state.settings = Object.assign({}, DEFAULTS, data); return Promise.resolve(); }
+  };
+  function errText(e) {
+    var c = e && e.code;
+    if (c === 'invalid_argument') return 'This view can’t save changes.';
+    if (c === 'quota_exceeded') return 'Storage is full. Delete a few old shifts, then try again.';
+    if (c === 'resource_exhausted') return 'Too many changes at once. Wait a moment, then try again.';
+    return 'Couldn’t save. Check your connection and try again.';
+  }
+  var toastTimer = null;
+  function toast(msg, bad) {
+    var el = $('#toast'); el.textContent = msg; el.className = 'toast' + (bad ? ' bad' : ''); el.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { el.hidden = true; }, bad ? 5000 : 2200);
+  }
+  function write(fn, okMsg) {
+    if (state.busy) return Promise.resolve(false);
+    state.busy = true;
+    return Promise.resolve().then(fn).then(function () { if (okMsg) toast(okMsg); return true; })
+      .catch(function (e) { toast(errText(e), true); return false; })
+      .then(function (ok) { state.busy = false; render(); return ok; });
+  }
+  function rawShift(id) { var s = state.shifts.find(function (x) { return x.id === id; }); if (!s) return null; var c = Object.assign({}, s); delete c.id; return c; }
+  function label(s) { return fmtWMD(dayNum(s.date)) + ' · ' + (locName(s.loc) || s.role || 'shift'); }
+
+  /* ---------- shift form ---------- */
+  var form = $('#shift-form'), timesTouched = false;
+  function defaultTimes(role, loc) { return (loc === 'WF' && WF_TIMES[role]) || ROLE_TIMES[role] || ROLE_TIMES.Captain; }
+  function openForm(id) {
+    var s = id ? state.shifts.find(function (x) { return x.id === id; }) : null;
+    state.editingId = id || null; timesTouched = !!s;
+    $('#form-title').textContent = s ? 'Edit shift' : 'Add a shift';
+    $('#f-date').value = s ? s.date : isoOf(todayNum());
+    $('#f-origin').value = s ? (s.origin || 'schedule') : 'schedule';
+    $('#f-role').value = s ? (s.role || 'Captain') : 'Captain';
+    $('#f-loc').value = s ? (s.loc || '') : 'HOSP';
+    var dt = defaultTimes('Captain', 'HOSP');
+    $('#f-start').value = s ? s.start : dt[0]; $('#f-end').value = s ? s.end : dt[1];
+    $('#f-break').value = s ? (s.breakMin || 0) : 0;
+    $('#f-ain').value = s ? (s.actualIn || '') : ''; $('#f-aout').value = s ? (s.actualOut || '') : ''; $('#f-abreak').value = s && s.actualBreak != null ? s.actualBreak : '';
+    $('#f-df').value = s && s.dfHours != null ? s.dfHours : '';
+    $('#f-status').value = s ? (s.status || 'scheduled') : 'scheduled';
+    $('#f-sheet').value = s ? (s.sheet || '') : 'missing';
+    $('#f-note').value = s ? (s.note || '') : '';
+    $('#f-repeat').checked = false; $('#f-repeat-n').value = 4; $('#repeat-row').hidden = !!s;
+    $('#form-err').hidden = true; form.hidden = false; updatePreview();
+    $('#f-date').focus(); form.scrollIntoView({ block: 'nearest' });
+  }
+  function closeForm() { form.hidden = true; state.editingId = null; }
+  function formData() {
+    var ab = $('#f-abreak').value, df = $('#f-df').value;
+    return { dfHours: df === '' ? null : Math.max(0, Math.round(parseFloat(df) * 100) / 100), date: $('#f-date').value, origin: $('#f-origin').value, role: $('#f-role').value, loc: $('#f-loc').value,
+      start: $('#f-start').value, end: $('#f-end').value, breakMin: Math.max(0, parseInt($('#f-break').value, 10) || 0),
+      actualIn: $('#f-ain').value, actualOut: $('#f-aout').value, actualBreak: ab === '' ? null : Math.max(0, parseInt(ab, 10) || 0),
+      status: $('#f-status').value, sheet: $('#f-sheet').value, note: $('#f-note').value.trim() };
+  }
+  function updatePreview() {
+    var d = formData(), out = $('#f-preview');
+    if (!d.date || !d.start || !d.end) { out.textContent = ''; return; }
+    if (d.start === d.end) { out.textContent = 'Start and end can’t be the same time.'; return; }
+    var dd = dayNum(d.date), pm = span(d.start, d.end, d.breakMin), txt = 'Scheduled: <b>' + fmtHours(pm) + '</b> · ' + esc(money.format(grossOf(pm, dd))) + ' gross';
+    if (d.dfHours != null) txt += '<br>Dayforce: <b>' + fmtHours(Math.round(d.dfHours * 60)) + '</b> · ' + esc(money.format(grossOf(Math.round(d.dfHours * 60), dd))) + ' gross';
+    else if (d.actualIn && d.actualOut && d.actualIn !== d.actualOut) { var am = span(d.actualIn, d.actualOut, d.actualBreak); txt += '<br>Clocked: <b>' + fmtHours(am) + '</b> · ' + esc(money.format(grossOf(am, dd))) + ' gross'; }
+    if (!state.editingId && $('#f-repeat').checked) {
+      var n = Math.min(16, Math.max(2, parseInt($('#f-repeat-n').value, 10) || 2)), ds = [];
+      for (var i = 0; i < n; i++) ds.push(fmtMD(dayNum(d.date) + 7 * i));
+      txt += '<br>Adds ' + n + ' shifts: ' + esc(ds.join(', '));
+    }
+    out.innerHTML = txt;
+  }
+  form.addEventListener('input', function (e) { if (e.target.id === 'f-start' || e.target.id === 'f-end') timesTouched = true; updatePreview(); });
+  form.addEventListener('change', function (e) {
+    var id = e.target.id;
+    if (id === 'f-origin' && e.target.value === 'training') { $('#f-role').value = 'Training'; $('#f-sheet').value = ''; }
+    if ((id === 'f-role' || id === 'f-loc' || id === 'f-origin') && !state.editingId && !timesTouched) {
+      var dt = defaultTimes($('#f-role').value, $('#f-loc').value); $('#f-start').value = dt[0]; $('#f-end').value = dt[1];
+      if ($('#f-role').value !== 'Captain') $('#f-sheet').value = '';
+    }
+    updatePreview();
+  });
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var d = formData(), err = $('#form-err');
+    function fail(m) { err.textContent = m; err.hidden = false; }
+    if (!d.date || !d.start || !d.end) return fail('Add a date, a start time and an end time.');
+    if (d.start === d.end) return fail('Start and end can’t be the same time.');
+    if (d.actualOut && !d.actualIn) return fail('Add the clock-in time too, or clear the clock-out time.');
+    if (d.actualIn && d.actualOut && d.actualIn === d.actualOut) return fail('Clock-in and clock-out can’t be the same time.');
+    err.hidden = true;
+    if (d.actualIn) d.actualSource = 'you';
+    var id = state.editingId;
+    if (id) {
+      var prev = rawShift(id) || {}, before = derive(Object.assign({ id: id }, prev)), next = Object.assign({}, prev, d);
+      if (!d.actualIn) { next.actualIn = ''; next.actualOut = ''; delete next.actualSource; }
+      var after = derive(Object.assign({ id: id }, next)), change = null;
+      if (before.active && !after.active) change = { kind: 'dropped', deltaMins: -before.planMins, text: 'You marked ' + label(next) + ' as ' + (next.status === 'swapped' ? 'swapped away.' : 'dropped.') };
+      else if (!before.active && after.active) change = { kind: 'restored', deltaMins: after.planMins, text: 'You put ' + label(next) + ' back on your schedule.' };
+      else if (after.active && after.planMins !== before.planMins) change = { kind: 'changed', deltaMins: after.planMins - before.planMins, text: 'You changed the scheduled times for ' + label(next) + ' to ' + fmtRange(next.start, next.end) + '.' };
+      write(function () { return store.setShift(id, next).then(function () { if (change) return store.addChange(Object.assign({ shiftDate: next.date, shiftId: id }, change)); }); }, 'Shift updated').then(function (ok) { if (ok) closeForm(); });
+    } else {
+      var n = $('#f-repeat').checked ? Math.min(16, Math.max(2, parseInt($('#f-repeat-n').value, 10) || 2)) : 1, base = dayNum(d.date);
+      write(function () {
+        var chain = Promise.resolve();
+        for (var i = 0; i < n; i++) (function (i) {
+          chain = chain.then(function () {
+            var data = Object.assign({}, d, { date: isoOf(base + 7 * i), source: 'you' });
+            if (!data.actualIn) { data.actualIn = ''; data.actualOut = ''; }
+            return store.setShift(null, data).then(function (newId) {
+              if (data.status !== 'scheduled') return;
+              var kind = data.origin === 'extra' ? 'extra' : data.origin === 'training' ? 'training' : 'schedule';
+              var verb = kind === 'extra' ? 'You picked up an extra shift: ' : kind === 'training' ? 'You added training: ' : 'You added a scheduled shift: ';
+              return store.addChange({ kind: kind, deltaMins: span(data.start, data.end, data.breakMin), shiftDate: data.date, shiftId: newId, text: verb + label(data) + ', ' + fmtRange(data.start, data.end) + '.' });
+            });
+          });
+        })(i);
+        return chain;
+      }, n > 1 ? n + ' shifts added' : 'Shift added').then(function (ok) { if (ok) { closeForm(); state.filter = 'upcoming'; render(); } });
+    }
+  });
+
+  /* ---------- clock-time logging ---------- */
+  function saveLog(id, usePlan) {
+    var s = state.shifts.find(function (x) { return x.id === id; }); if (!s) return;
+    var d = usePlan ? { in: s.start, out: s.end, brk: String(s.breakMin || 0) } : (state.drafts[id] || {});
+    if (!d.in) { toast('Add your clock-in time.', true); return; }
+    if (d.out && d.in === d.out) { toast('Clock-in and clock-out can’t be the same time.', true); return; }
+    var patch = { actualIn: d.in, actualOut: d.out || '', actualBreak: Math.max(0, parseInt(d.brk, 10) || 0), actualSource: 'you' };
+    write(function () { return store.patchShift(id, patch); }, d.out ? 'Times saved' : 'Clock-in saved').then(function (ok) {
+      if (ok) { delete state.drafts[id]; if (d.out && state.logOpen === id) state.logOpen = null; render(); }
+    });
+  }
+
+  /* ---------- settings ---------- */
+  function openSettings() {
+    var st = state.settings;
+    var hist = rateList(), cur = null;
+    hist.forEach(function (x) { if (dayNum(x.from) <= todayNum()) cur = x; });
+    if (!cur && hist.length) cur = hist[0];
+    $('#s-rate').value = rateOn(todayNum()); $('#s-rate-from').value = cur ? cur.from : '';
+    $('#s-rate-hist').textContent = hist.length > 1 ? 'Rate history: ' + hist.map(function (x, i) {
+      var nx = hist[i + 1]; return money.format(Number(x.rate)) + (nx ? ' until ' + fmtMD(dayNum(nx.from) - 1) : ' from ' + fmtMD(dayNum(x.from)));
+    }).join(' · ') : 'From your contract or a Dayforce pay stub.';
+    $('#s-ppy').value = st.periodsPerYear || '';
+    $('#s-vac').value = st.vacPct; $('#s-mode').value = st.deductMode || 'cra'; $('#s-pct').value = st.customPct || 0;
+    $('#s-days').value = String(st.periodDays); $('#s-anchor').value = st.anchor; $('#s-offset').value = st.paydayOffset;
+    $('#settings-err').hidden = true; $('#settings').hidden = false; $('#s-rate').focus(); $('#settings').scrollIntoView({ block: 'nearest' });
+  }
+  $('#settings-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var rate = parseFloat($('#s-rate').value), err = $('#settings-err');
+    if (!(rate >= 0)) { err.textContent = 'Enter your hourly rate, for example 18.50.'; err.hidden = false; return; }
+    if (!$('#s-anchor').value) { err.textContent = 'Pick the first day of any pay period.'; err.hidden = false; return; }
+    var from = $('#s-rate-from').value, hist = rateList().map(function (x) { return { from: x.from, rate: Number(x.rate) }; });
+    if (from) {
+      var hi = hist.findIndex(function (x) { return x.from === from; });
+      if (hi >= 0) hist[hi].rate = r2(rate); else hist.push({ from: from, rate: r2(rate) });
+      hist.sort(function (a, b) { return a.from < b.from ? -1 : a.from > b.from ? 1 : 0; });
+    } else if (hist.length) {
+      var ci = 0; hist.forEach(function (x, i) { if (dayNum(x.from) <= todayNum()) ci = i; }); hist[ci].rate = r2(rate);
+    }
+    var ppy = parseInt($('#s-ppy').value, 10);
+    var next = Object.assign({}, state.settings, {
+      rate: hist.length ? hist[hist.length - 1].rate : r2(rate), rates: hist, rateConfirmed: true, vacPct: Math.max(0, parseFloat($('#s-vac').value) || 0), deductMode: $('#s-mode').value,
+      customPct: Math.min(90, Math.max(0, parseFloat($('#s-pct').value) || 0)), periodDays: parseInt($('#s-days').value, 10) || 14,
+      periodsPerYear: ppy > 0 && ppy <= 53 ? ppy : 0,
+      anchor: $('#s-anchor').value, paydayOffset: Math.max(0, parseInt($('#s-offset').value, 10) || 0)
+    });
+    write(function () { return store.setSettings(next); }, 'Settings saved').then(function (ok) { if (ok) $('#settings').hidden = true; });
+  });
+
+  /* ---------- events ---------- */
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-action]'); if (!b) return;
+    var a = b.getAttribute('data-action'), id = b.getAttribute('data-id'), key = b.getAttribute('data-key');
+    if (state.mode === 'snapshot' && ['view', 'go-needs', 'filter'].indexOf(a) < 0) return;
+    var s = id ? state.shifts.find(function (x) { return x.id === id; }) : null;
+    switch (a) {
+      case 'view': state.view = b.getAttribute('data-view'); render(); window.scrollTo({ top: 0 }); break;
+      case 'go-needs': state.view = 'shifts'; state.filter = 'needs'; render(); window.scrollTo({ top: 0 }); break;
+      case 'filter': state.filter = b.getAttribute('data-filter'); state.confirmDel = null; render(); break;
+      case 'add': state.view = 'shifts'; render(); openForm(null); break;
+      case 'edit': state.view = 'shifts'; render(); openForm(id); break;
+      case 'close-form': closeForm(); break;
+      case 'log-open': state.logOpen = state.logOpen === id ? null : id; render(); break;
+      case 'log-save': saveLog(id, false); break;
+      case 'log-plan': saveLog(id, true); break;
+      case 'drop': if (s) { var dm = derive(s).planMins; write(function () { return store.patchShift(id, { status: 'cancelled' }).then(function () { return store.addChange({ kind: 'dropped', deltaMins: -dm, shiftDate: s.date, shiftId: id, text: 'You dropped ' + label(s) + '.' }); }); }, 'Shift dropped'); } break;
+      case 'restore': if (s) { var rm = derive(Object.assign({}, s, { status: 'scheduled' })).planMins; write(function () { return store.patchShift(id, { status: 'scheduled' }).then(function () { return store.addChange({ kind: 'restored', deltaMins: rm, shiftDate: s.date, shiftId: id, text: 'You put ' + label(s) + ' back on your schedule.' }); }); }, 'Shift restored'); } break;
+      case 'sheet-sent': write(function () { return store.patchShift(id, { sheet: 'sent' }); }, 'Time sheet marked sent'); break;
+      case 'ask-delete': state.confirmDel = id; render(); break;
+      case 'keep': state.confirmDel = null; render(); break;
+      case 'confirm-delete': state.confirmDel = null; write(function () { return store.delShift(id); }, 'Shift deleted'); break;
+      case 'pay-open': {
+        var pd = state.payments[key];
+        state.payKey = key; state.payDraft = { amount: pd ? String(pd.received) : '', date: pd && pd.paidOn ? pd.paidOn : isoOf(todayNum()) };
+        render(); var inp = document.getElementById('pay-amt'); if (inp) inp.focus(); break;
+      }
+      case 'pay-cancel': state.payKey = null; render(); break;
+      case 'pay-save': {
+        var amt = parseFloat(state.payDraft.amount);
+        if (!(amt >= 0)) { toast('Enter the amount that landed in your account.', true); break; }
+        var p = periodOf(dayNum(key));
+        var prevPay = state.payments[key] || {};
+        write(function () { return store.setPayment(key, Object.assign({}, prevPay, { periodStart: key, periodEnd: isoOf(p.end), received: r2(amt), paidOn: state.payDraft.date || isoOf(todayNum()) })); }, 'Deposit recorded').then(function (ok) { if (ok) { state.payKey = null; render(); } });
+        break;
+      }
+      case 'pay-undo': write(function () { return store.delPayment(key); }, 'Marked not paid'); break;
+      case 'open-settings': openSettings(); break;
+      case 'close-settings': $('#settings').hidden = true; break;
+      case 'dismiss-banner': write(function () { return store.setSettings(Object.assign({}, state.settings, { banner: '' })); }); break;
+    }
+  });
+  document.addEventListener('input', function (e) {
+    var t = e.target;
+    if (t.id === 'pay-amt') state.payDraft.amount = t.value;
+    if (t.id === 'pay-date') state.payDraft.date = t.value;
+    var dk = t.getAttribute && t.getAttribute('data-draft');
+    if (dk) {
+      var id = t.getAttribute('data-id'), d = state.drafts[id] || (state.drafts[id] = { in: '', out: '', brk: '0' });
+      d[dk] = t.value;
+      Array.prototype.forEach.call(document.querySelectorAll('[id="lp-' + CSS.escape(id) + '"]'), function (p) { p.textContent = loggerPreview(d); });
+    }
+  });
+
+  /* ---------- boot ---------- */
+  function goLocal() { state.mode = 'local'; state.loaded = true; render(); }
+  function onSubErr() { toast('Lost the connection to your saved shifts. Reload the page to reconnect.', true); }
+  function waitForClaude() {
+    return new Promise(function (resolve) {
+      var tries = 0;
+      (function check() { if (window.claude && typeof window.claude.use === 'function') return resolve(window.claude); if (++tries > 40) return resolve(null); setTimeout(check, 100); })();
+    });
+  }
+  function boot() {
+    try { var h = (location.hash || '').slice(1); if (['overview', 'shifts', 'pay', 'changes'].indexOf(h) >= 0) state.view = h; } catch (e) {}
+    var SNAP = window.SAFEWALK_SNAPSHOT;
+    if (SNAP) {
+      state.mode = 'snapshot'; state.builtAt = SNAP.builtAt || '';
+      state.settings = Object.assign({}, DEFAULTS, SNAP.settings || {});
+      state.shifts = (SNAP.shifts || []).slice(); state.payments = SNAP.payments || {}; state.changes = (SNAP.changes || []).slice();
+      state.loaded = true; document.body.classList.add('ro');
+      render(); setInterval(render, 60000); return;
+    }
+    render();
+    waitForClaude().then(function (c) {
+      if (!c) return goLocal();
+      return Promise.all([c.use('db'), c.use('user')]).then(function (r) {
+        var db = r[0], user = r[1];
+        if (!db || !user) return goLocal();
+        return user.id().then(function (uid) {
+          if (!uid) return goLocal();
+          var base = db.doc('data/users/' + uid + '/tracker');
+          refs = { base: base, shifts: base.collection('shifts'), payments: base.collection('payments'), changes: base.collection('changes') };
+          state.mode = 'db';
+          var got = { s: false, b: false };
+          function ready() { if (got.s && got.b) state.loaded = true; render(); }
+          base.onSnapshot(function (snap) { state.settings = Object.assign({}, DEFAULTS, snap.exists ? snap.data() : {}); got.b = true; ready(); }, onSubErr);
+          refs.shifts.onSnapshot(function (snap) { state.shifts = snap.docs.map(function (d) { return Object.assign({ id: d.id }, d.data()); }); got.s = true; ready(); }, onSubErr);
+          refs.payments.onSnapshot(function (snap) { var m = {}; snap.docs.forEach(function (d) { m[d.id] = d.data(); }); state.payments = m; ready(); }, onSubErr);
+          refs.changes.onSnapshot(function (snap) { state.changes = snap.docs.map(function (d) { return Object.assign({ id: d.id }, d.data()); }); ready(); }, onSubErr);
+        });
+      });
+    }).catch(function () { goLocal(); });
+    setInterval(function () { var a = document.activeElement; if (!a || !a.closest || !a.closest('#action, #period-list, #shift-list, #shift-form, #settings')) render(); }, 60000);
+  }
+  boot();
+})();
+</script>
+</body>
+</html>
