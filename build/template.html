@@ -67,7 +67,7 @@ h1 { font-family: var(--f-display); font-weight: 700; font-size: clamp(34px, 6vw
 .tab { background: none; border: 0; border-bottom: 3px solid transparent; padding: 12px 14px 10px; font-weight: 600; font-size: 15px; color: var(--muted); cursor: pointer; white-space: nowrap; }
 .tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--hivis); }
 [hidden] { display: none !important; }
-body.ro [data-action]:not([data-action="view"]):not([data-action="filter"]):not([data-action="go-needs"]):not([data-action^="site-"]), body.ro #action, body.ro #shift-form, body.ro #settings, body.ro .logger { display: none !important; }
+body.ro [data-action]:not([data-action="view"]):not([data-action="filter"]):not([data-action="go-needs"]):not([data-action="period-shifts"]):not([data-action^="site-"]), body.ro #action, body.ro #shift-form, body.ro #settings, body.ro .logger { display: none !important; }
 .banner .connect { display: grid; gap: 10px; margin-top: 10px; }
 .banner .connect ol { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
 .banner .connect input { width: 100%; }
@@ -236,6 +236,28 @@ table.ded th:first-child { text-align: left; font-weight: 500; color: var(--mute
 table.ded thead th { font-size: 11.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 table.ded tr.net th, table.ded tr.net td { font-weight: 700; color: var(--ink); border-bottom: 0; font-size: 15px; }
 table.ded td.dim { color: var(--muted); }
+.summary.two { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 4px; }
+.mhead { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; padding: 22px 0 8px; border-bottom: 2px solid var(--ink); }
+.mhead:first-child { padding-top: 6px; }
+.mhead + .period { border-top: 0; }
+.mhead > div:first-child { min-width: 0; }
+.m-name { display: block; white-space: nowrap; font-family: var(--f-display); font-weight: 700; font-size: 21px; letter-spacing: .03em; text-transform: uppercase; }
+.m-sub, .m-amt span { display: block; font-size: 12.5px; color: var(--muted); }
+.m-amt { text-align: right; flex-shrink: 0; }
+.m-amt b { font-family: var(--f-display); font-weight: 600; font-size: 23px; font-variant-numeric: tabular-nums; }
+.wks { display: grid; gap: 12px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+.wk-head { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding-bottom: 6px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.wk-list { list-style: none; margin: 0; padding: 0; }
+.wk-head span + span { text-transform: none; letter-spacing: 0; }
+.wk-list li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 4px 10px; align-items: baseline; padding: 7px 0; font-size: 14px; border-bottom: 1px dashed var(--line); font-variant-numeric: tabular-nums; }
+.wk-list li:last-child { border-bottom: 0; }
+.wk-d { font-weight: 600; white-space: nowrap; }
+.wk-w { color: var(--muted); min-width: 0; overflow-wrap: anywhere; }
+.wk-h { text-align: right; }
+.wk-h small { display: block; font-size: 11px; color: var(--muted); }
+.wk-m { text-align: right; font-weight: 600; }
+.wk-none, .wk-note { margin: 6px 0 0; font-size: 13px; color: var(--muted); }
+@media (max-width: 420px) { .wk-list li { font-size: 13.5px; gap: 4px 8px; } }
 .p-notes { display: grid; gap: 4px; font-size: 13.5px; }
 .p-notes .plus, .p-notes .minus { font-weight: 600; }
 .payform { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px 10px; align-items: end; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
@@ -375,6 +397,7 @@ footer.foot { color: var(--muted); font-size: 12.5px; max-width: 90ch; display: 
   <section class="view" id="view-pay" hidden>
     <section class="panel" aria-labelledby="h-pay">
       <div class="panel-head"><h2 id="h-pay">Pay periods</h2><button class="link" type="button" data-action="open-settings">Rate and deductions</button></div>
+      <div class="summary two" id="pay-totals" hidden></div>
       <p class="hint" id="pay-hint">Projected uses your scheduled times. Actual uses the times you clocked. Deductions follow CRA’s 2026 payroll formulas for Ontario.</p>
       <ul class="list" id="period-list"><li class="empty">Pay periods appear once your shifts load.</li></ul>
     </section>
@@ -447,7 +470,7 @@ footer.foot { color: var(--muted); font-size: 12.5px; max-width: 90ch; display: 
   var state = {
     settings: Object.assign({}, DEFAULTS), shifts: [], payments: {}, changes: [],
     loaded: false, mode: 'loading', view: 'overview', filter: 'upcoming',
-    editingId: null, confirmDel: null, logOpen: null, payKey: null, payDraft: { amount: '', date: '' }, drafts: {}, busy: false
+    editingId: null, confirmDel: null, logOpen: null, payKey: null, payDraft: { amount: '', date: '' }, drafts: {}, busy: false, openShifts: {}
   };
   var refs = null;
 
@@ -853,18 +876,70 @@ footer.foot { color: var(--muted); font-size: 12.5px; max-width: 90ch; display: 
     } else if (t > p.end && p.expMins > 0) {
       act = '<div class="actions" style="justify-content:flex-start"><button class="link" type="button" data-action="pay-open" data-key="' + p.key + '">Record the deposit</button></div>';
     }
+    var open = !!state.openShifts[p.key], n = p.shifts.length;
+    var toggle = n ? '<div class="actions" style="justify-content:flex-start"><button class="link" type="button" data-action="period-shifts" data-key="' + p.key + '" aria-expanded="' + open + '">' + (open ? 'Hide shifts' : 'See the ' + (n === 1 ? 'shift' : n + ' shifts') + ' in this pay') + '</button></div>' : '';
     return '<li class="period"><div class="p-top"><span class="p-range">' + fmtMD(p.start) + ' – ' + fmtMD(p.end) + '</span>' + chipHtml + '</div>' +
-      '<div class="p-sub">Payday ' + fmtWMD(p.payday) + ' · ' + p.shifts.length + (p.shifts.length === 1 ? ' shift' : ' shifts') + '</div>' + dedTable(p) +
-      (notes.length ? '<div class="p-notes">' + notes.map(function (n) { return '<div>' + n + '</div>'; }).join('') + '</div>' : '') + act + '</li>';
+      '<div class="p-sub">Payday ' + fmtWMD(p.payday) + ' · ' + n + (n === 1 ? ' shift' : ' shifts') + '</div>' + dedTable(p) +
+      (notes.length ? '<div class="p-notes">' + notes.map(function (n) { return '<div>' + n + '</div>'; }).join('') + '</div>' : '') + act + toggle + (open ? weekBreakdown(p) : '') + '</li>';
+  }
+  /* The shifts behind one pay, split into its two Thursday-to-Wednesday weeks */
+  function weekBreakdown(p) {
+    var html = '<div class="wks">', totalMins = 0;
+    [[p.start, p.start + 6], [p.start + 7, p.end]].forEach(function (w, i) {
+      var ss = p.shifts.filter(function (s) { return s.day >= w[0] && s.day <= w[1]; }).sort(function (a, b) { return a.pStart - b.pStart; });
+      var mins = 0, pay = 0;
+      var items = ss.map(function (s) {
+        var m = s.actMins != null ? s.actMins : s.planMins, planned = s.actMins == null, w8 = r2(wagesOf(m, s.day) + 1e-9);
+        mins += m; pay += w8;
+        var what = [locName(s.loc), s.role].filter(Boolean).join(' · ') || 'Shift';
+        return '<li><span class="wk-d">' + esc(fmtWMD(s.day)) + '</span><span class="wk-w">' + esc(what) + '</span>' +
+          '<span class="wk-h">' + esc(fmtH(m / 60)) + (planned ? '<small>planned</small>' : '') + '</span><span class="wk-m">' + esc(money.format(w8)) + '</span></li>';
+      }).join('');
+      totalMins += mins;
+      html += '<div class="wk"><div class="wk-head"><span>Week ' + (i + 1) + ' · ' + esc(fmtWMD(w[0]) + ' – ' + fmtWMD(w[1])) + '</span><span>' + esc(fmtH(mins / 60) + ' · ' + money.format(pay)) + '</span></div>' +
+        (items ? '<ul class="wk-list">' + items + '</ul>' : '<p class="wk-none">No shifts this week.</p>') + '</div>';
+    });
+    var stub = p.paid && p.paid.stub, note = 'Each shift shows hours × your rate that day. Holiday pay, vacation pay and deductions are in the table above.';
+    if (stub && Math.abs(Number(stub.hours) - totalMins / 60) >= 0.01) note += ' Your pay stub paid ' + fmtH(Number(stub.hours)) + '; these shifts add up to ' + fmtH(totalMins / 60) + '.';
+    return html + '<p class="wk-note">' + esc(note) + '</p></div>';
+  }
+  /* What a pay is worth: the stub or deposit when it's in, otherwise the estimate */
+  function periodMoney(p) {
+    var stub = p.paid && p.paid.stub;
+    return { net: p.paid ? Number(p.paid.received) || 0 : p.exp.net, gross: stub ? Number(stub.gross) || 0 : p.exp.gross, hours: stub ? Number(stub.hours) || 0 : p.expMins / 60, confirmed: !!p.paid };
   }
   function renderPeriods(periods) {
-    var el = $('#period-list');
-    if (!state.loaded) { el.innerHTML = '<li class="empty">Loading pay periods…</li>'; return; }
+    var el = $('#period-list'), tot = $('#pay-totals');
+    if (!state.loaded) { el.innerHTML = '<li class="empty">Loading pay periods…</li>'; tot.hidden = true; return; }
     var rows = periods.filter(function (p) { return p.shifts.length || p.paid || p.status === 'current' || p.changes.length; });
-    el.innerHTML = rows.map(periodRow).join('');
-    $('#pay-hint').textContent = state.settings.deductMode === 'custom'
+    var earned = { net: 0, gross: 0, hours: 0, n: 0, first: null }, coming = { net: 0, n: 0, next: null }, months = {};
+    rows.forEach(function (p) {
+      var d = parts(p.payday), mk = d.y * 12 + d.m;
+      var M = months[mk] || (months[mk] = { k: mk, y: d.y, m: d.m, net: 0, gross: 0, n: 0, est: false, rows: [] });
+      M.rows.push(p);
+      if (!(p.paid || p.expMins > 0)) return;
+      var v = periodMoney(p);
+      M.net += v.net; M.gross += v.gross; M.n++; if (!v.confirmed) M.est = true;
+      if (v.confirmed) { earned.net += v.net; earned.gross += v.gross; earned.hours += v.hours; earned.n++; if (earned.first == null || p.payday < earned.first) earned.first = p.payday; }
+      else { coming.net += v.net; coming.n++; if (coming.next == null || p.payday < coming.next) coming.next = p.payday; }
+    });
+    tot.innerHTML =
+      '<div class="stat"><span class="k">Earned so far</span><span class="v">' + esc(money.format(earned.net)) + '</span><span class="s">' +
+        (earned.n ? esc('take-home from ' + earned.n + (earned.n === 1 ? ' pay' : ' pays') + ' since ' + fmtMD(earned.first) + ' · ' + money.format(earned.gross) + ' gross · ' + fmtH(earned.hours)) : 'No pay recorded yet') + '</span></div>' +
+      '<div class="stat"><span class="k">Still coming</span><span class="v">' + esc((coming.n ? '~' : '') + money.format(coming.net)) + '</span><span class="s">' +
+        (coming.n ? esc('estimated take-home from ' + coming.n + (coming.n === 1 ? ' pay' : ' pays') + ' · next one ' + fmtWMD(coming.next)) : 'Nothing scheduled yet') + '</span></div>';
+    tot.hidden = false;
+    var html = '';
+    Object.keys(months).map(Number).sort(function (a, b) { return b - a; }).forEach(function (k) {
+      var M = months[k];
+      html += '<li class="mhead"><div><span class="m-name">' + MONTHS_LONG[M.m] + ' ' + M.y + '</span><span class="m-sub">' + M.n + (M.n === 1 ? ' pay lands' : ' pays land') + ' this month' + (M.est ? ' · includes estimates' : '') + '</span></div>' +
+        '<div class="m-amt"><b>' + esc((M.est ? '~' : '') + money.format(M.net)) + '</b><span>take-home · ' + esc(money.format(M.gross)) + ' gross</span></div></li>' +
+        M.rows.map(periodRow).join('');
+    });
+    el.innerHTML = html;
+    $('#pay-hint').textContent = 'Pays are grouped by the month the money lands. ' + (state.settings.deductMode === 'custom'
       ? 'Projected uses your scheduled times. Actual uses the times you clocked. Deductions use your own ' + (Number(state.settings.customPct) || 0) + '%.'
-      : 'Projected uses your scheduled times. Actual uses your Dayforce hours when they’re in, otherwise the times you clocked. Both include holiday pay and vacation pay. Paid periods show the real pay stub next to the estimate.';
+      : 'Projected uses your scheduled times. Actual uses your Dayforce hours when they’re in, otherwise the times you clocked. Both include holiday pay and vacation pay. Paid periods show the real pay stub next to the estimate.');
   }
 
   function render() {
@@ -1183,11 +1258,12 @@ footer.foot { color: var(--muted); font-size: 12.5px; max-width: 90ch; display: 
           .catch(function () { toast('Couldn’t reach GitHub. Check your connection and try again.', true); });
         return;
       }
-      if (!siteCanEdit() && ['view', 'go-needs', 'filter'].indexOf(a) < 0) return;
+      if (!siteCanEdit() && ['view', 'go-needs', 'filter', 'period-shifts'].indexOf(a) < 0) return;
     }
     var s = id ? state.shifts.find(function (x) { return x.id === id; }) : null;
     switch (a) {
       case 'view': state.view = b.getAttribute('data-view'); render(); window.scrollTo({ top: 0 }); break;
+      case 'period-shifts': state.openShifts[key] = !state.openShifts[key]; render(); break;
       case 'go-needs': state.view = 'shifts'; state.filter = 'needs'; render(); window.scrollTo({ top: 0 }); break;
       case 'filter': state.filter = b.getAttribute('data-filter'); state.confirmDel = null; render(); break;
       case 'add': state.view = 'shifts'; render(); openForm(null); break;
