@@ -1,5 +1,5 @@
 // Builds the password-locked, view-only page (index.html) from an export of the app's data.
-// Usage: STATICRYPT_PASSWORD=... node build/build.mjs <export-dir>
+// Usage: STATICRYPT_PASSWORD=... EDITS_KEY=... node build/build.mjs <export-dir>
 // <export-dir> holds data/users/me/tracker.json and data/users/me/tracker/{shifts,payments,changes}/*.json
 import fs from 'node:fs';
 import path from 'node:path';
@@ -25,6 +25,8 @@ for (const p of coll('payments')) { const { id, ...rest } = p; payments[id] = re
 if (!shifts.length) { console.error('No shifts found in the export; refusing to publish an empty page.'); process.exit(1); }
 
 const snap = { builtAt: new Date().toISOString(), settings, shifts, payments, changes };
+// With EDITS_KEY set, the page lets a connected device save edits (encrypted with this key) to edits.json in the repo.
+if (process.env.EDITS_KEY) snap.sync = { repo: process.env.SITE_REPO || 'Travis-bug/safewalk-pay', branch: 'main', path: 'edits.json', key: process.env.EDITS_KEY };
 const tpl = fs.readFileSync(path.join(root, 'build/template.html'), 'utf8');
 if (!tpl.includes('<!--SNAPSHOT-->')) { console.error('Template is missing the <!--SNAPSHOT--> marker.'); process.exit(1); }
 const json = JSON.stringify(snap).replace(/</g, '\\u003c');

@@ -67,7 +67,11 @@ h1 { font-family: var(--f-display); font-weight: 700; font-size: clamp(34px, 6vw
 .tab { background: none; border: 0; border-bottom: 3px solid transparent; padding: 12px 14px 10px; font-weight: 600; font-size: 15px; color: var(--muted); cursor: pointer; white-space: nowrap; }
 .tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--hivis); }
 [hidden] { display: none !important; }
-body.ro [data-action]:not([data-action="view"]):not([data-action="filter"]):not([data-action="go-needs"]), body.ro #action, body.ro #shift-form, body.ro #settings, body.ro .logger { display: none !important; }
+body.ro [data-action]:not([data-action="view"]):not([data-action="filter"]):not([data-action="go-needs"]):not([data-action^="site-"]), body.ro #action, body.ro #shift-form, body.ro #settings, body.ro .logger { display: none !important; }
+.banner .connect { display: grid; gap: 10px; margin-top: 10px; }
+.banner .connect ol { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+.banner .connect input { width: 100%; }
+.banner .b-actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; flex-shrink: 0; }
 .tab .ct { display: inline-block; min-width: 20px; margin-left: 6px; padding: 0 6px; border-radius: 999px; background: var(--bad-bg); color: var(--bad); font-size: 12px; line-height: 18px; text-align: center; }
 
 main.wrap { display: grid; gap: 20px; padding-block: 20px 44px; }
@@ -386,7 +390,7 @@ footer.foot { color: var(--muted); font-size: 12.5px; max-width: 90ch; display: 
   </section>
 
   <footer class="foot">
-    <span>View-only copy of your Shifts &amp; Pay app, rebuilt after each daily check. Actual pay uses Dayforce hours and pay stubs wherever they’re known.</span>
+    <span>Your private copy of the Shifts &amp; Pay app. Claude rebuilds it after each daily check; edits you make here reach the Claude app at that check. Actual pay uses Dayforce hours and pay stubs wherever they’re known.</span>
     <span>Pay is hours × your rate on that day, plus holiday pay, plus vacation pay. Deductions use CRA payroll formulas for Ontario, so your real cheque can still differ a little.</span>
   </footer>
 </main>
@@ -608,7 +612,18 @@ footer.foot { color: var(--muted); font-size: 12.5px; max-width: 90ch; display: 
   function renderBanners() {
     var html = '';
     if (state.mode === 'local') html += '<div class="banner warn"><p>Changes on this page aren’t saved in this view. Open it in Claude while signed in to keep your shifts.</p></div>';
-    if (state.mode === 'snapshot') html += '<div class="banner"><p><strong>View-only copy</strong>, updated ' + esc(fmtStamp(state.builtAt) || 'recently') + '. To log times or change anything, use the app in Claude or message Claude.</p></div>';
+    if (state.mode === 'snapshot') {
+      var upd = esc(fmtStamp(state.builtAt) || 'recently'), pend = state.sitePending ? ' ' + state.sitePending + ' edit' + (state.sitePending === 1 ? '' : 's') + ' made here will reach the Claude app at the next daily check.' : '';
+      if (siteCanEdit()) html += '<div class="banner"><p><strong>Editing is on for this device.</strong> Claude last rebuilt this copy ' + upd + '.' + esc(pend) + '</p><div class="b-actions"><button class="link" type="button" data-action="site-disconnect">Turn off</button></div></div>';
+      else if (!state.site) html += '<div class="banner"><p><strong>View-only copy</strong>, updated ' + upd + '. To log times or change anything, use the app in Claude or message Claude.</p></div>';
+      else if (!state.connectOpen) html += '<div class="banner"><p><strong>View-only on this device</strong>, updated ' + upd + '.' + esc(pend) + ' Turn on editing to log times and change shifts here.</p><div class="b-actions"><button class="link" type="button" data-action="site-connect">Turn on editing</button></div></div>';
+      else html += '<div class="banner"><div style="flex:1"><p><strong>Turn on editing for this device</strong></p><div class="connect">' +
+        '<ol><li>On GitHub, open Settings → Developer settings → Personal access tokens → <b>Fine-grained tokens</b> → Generate new token.</li>' +
+        '<li>Repository access: <b>Only select repositories</b> → <b>' + esc(state.site.repo.split('/')[1] || state.site.repo) + '</b>. Permissions → Repository → <b>Contents: Read and write</b>.</li>' +
+        '<li>Generate it, copy it, and paste it here. It stays on this device only.</li></ol>' +
+        '<label class="field"><span>GitHub key</span><input id="gh-token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…" value="' + esc(state.tokenDraft || '') + '"></label>' +
+        '<div class="row-btns"><button class="btn btn-primary" type="button" data-action="site-connect-save">Turn on editing</button><button class="btn btn-quiet" type="button" data-action="site-connect-cancel">Cancel</button></div></div></div></div>';
+    }
     if (state.loaded && !state.settings.rateConfirmed) html += '<div class="banner warn"><p><strong>Pay uses a placeholder rate</strong> (Ontario minimum wage, $17.95/h). Your real rate is in your employment contract. Set it once and every number updates.</p><button class="link" type="button" data-action="open-settings">Set rate</button></div>';
     if (state.settings.banner) html += '<div class="banner"><p>' + esc(state.settings.banner) + '</p><button class="link" type="button" data-action="dismiss-banner">Dismiss</button></div>';
     $('#banners').innerHTML = html; $('#banners').hidden = !html;
@@ -867,20 +882,110 @@ footer.foot { color: var(--muted); font-size: 12.5px; max-width: 90ch; display: 
 
   /* ---------- storage ---------- */
   function rid() { return 'x' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+
+  /* ---------- private site: edits are saved as encrypted operations in the GitHub repo, and Claude copies them into the app at each daily check ---------- */
+  var TOKEN_KEY = 'safewalk-gh-key', siteQueue = null;
+  function siteToken() { try { return localStorage.getItem(TOKEN_KEY) || ''; } catch (e) { return ''; } }
+  function siteCanEdit() { return state.mode === 'snapshot' && !!state.site && !!siteToken(); }
+  function b64ToBytes(s) { var bin = atob(s), out = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out; }
+  function bytesToB64(u8) { var s = ''; for (var i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
+  function siteKey() { return crypto.subtle.importKey('raw', b64ToBytes(state.site.key), 'AES-GCM', false, ['encrypt', 'decrypt']); }
+  function sealOps(ops) {
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    return siteKey().then(function (k) { return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, k, new TextEncoder().encode(JSON.stringify({ ops: ops }))); })
+      .then(function (ct) { return { v: 1, iv: bytesToB64(iv), ct: bytesToB64(new Uint8Array(ct)) }; });
+  }
+  function openOps(box) {
+    return siteKey().then(function (k) { return crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64ToBytes(box.iv) }, k, b64ToBytes(box.ct)); })
+      .then(function (pt) { var o = JSON.parse(new TextDecoder().decode(pt)); return Array.isArray(o.ops) ? o.ops : []; });
+  }
+  function ghFetch(method, body, token) {
+    var S = state.site, url = 'https://api.github.com/repos/' + S.repo + '/contents/' + S.path + (method === 'GET' ? '?ref=' + encodeURIComponent(S.branch || 'main') : '');
+    var h = { Accept: 'application/vnd.github+json' }, tk = token == null ? siteToken() : token;
+    if (tk) h.Authorization = 'Bearer ' + tk;
+    if (body) h['Content-Type'] = 'application/json';
+    return fetch(url, { method: method, headers: h, body: body ? JSON.stringify(body) : undefined, cache: 'no-store' });
+  }
+  function siteErr(msg) { var e = new Error(msg); e.site = true; return e; }
+  function readRemote() {
+    return ghFetch('GET').then(function (r) {
+      if (r.status === 404) return { sha: null, ops: [] };
+      if (r.status === 401) throw siteErr('GitHub didn’t accept this device’s key. Turn editing off and on again with a new key.');
+      if (!r.ok) throw siteErr('Couldn’t reach GitHub (error ' + r.status + '). Try again in a minute.');
+      return r.json().then(function (j) { var box = JSON.parse(atob(String(j.content || '').replace(/\s/g, ''))); return openOps(box).then(function (ops) { return { sha: j.sha, ops: ops }; }); });
+    });
+  }
+  function pushOps(newOps, tries) {
+    tries = tries || 0;
+    return readRemote().then(function (cur) {
+      var have = {}; cur.ops.forEach(function (o) { have[o.id] = 1; });
+      var all = cur.ops.concat(newOps.filter(function (o) { return !have[o.id]; }));
+      return sealOps(all).then(function (box) {
+        var body = { message: 'Edit from private site', content: btoa(JSON.stringify(box)), branch: state.site.branch || 'main' };
+        if (cur.sha) body.sha = cur.sha;
+        return ghFetch('PUT', body);
+      }).then(function (r) {
+        if (r.ok) { state.sitePending = all.length; return all; }
+        if ((r.status === 409 || r.status === 422) && tries < 3) return pushOps(newOps, tries + 1);
+        if (r.status === 401 || r.status === 403 || r.status === 404) throw siteErr('GitHub didn’t accept this device’s key, so nothing was saved. Turn editing off and on again with a new key.');
+        throw siteErr('Couldn’t save to GitHub (error ' + r.status + '). Nothing was changed.');
+      });
+    });
+  }
+  function patchInto(obj, patch) { Object.keys(patch || {}).forEach(function (k) { var v = patch[k]; if (v && typeof v === 'object' && v.__delete__) delete obj[k]; else obj[k] = v; }); return obj; }
+  function applyOp(op) {
+    var d = op.data || {}, id = op.docId, i;
+    switch (op.type) {
+      case 'shift.set': i = state.shifts.findIndex(function (s) { return s.id === id; }); if (i >= 0) state.shifts[i] = Object.assign({ id: id }, d); else state.shifts.push(Object.assign({ id: id }, d)); break;
+      case 'shift.patch': i = state.shifts.findIndex(function (s) { return s.id === id; }); if (i >= 0) state.shifts[i] = patchInto(Object.assign({}, state.shifts[i]), d); break;
+      case 'shift.del': state.shifts = state.shifts.filter(function (s) { return s.id !== id; }); break;
+      case 'change.add': state.changes = state.changes.filter(function (c) { return c.id !== id; }).concat([Object.assign({ id: id }, d)]); break;
+      case 'payment.set': state.payments = Object.assign({}, state.payments); state.payments[id] = d; break;
+      case 'payment.del': state.payments = Object.assign({}, state.payments); delete state.payments[id]; break;
+      case 'settings.patch': state.settings = patchInto(Object.assign({}, state.settings), d); break;
+    }
+  }
+  function siteOp(type, docId, data) {
+    var op = { id: 'op' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7), at: new Date().toISOString(), type: type, docId: docId, data: data == null ? null : JSON.parse(JSON.stringify(data)) };
+    applyOp(op);
+    if (siteQueue) { siteQueue.push(op); return Promise.resolve(); }
+    return pushOps([op]).then(function () {});
+  }
+  function loadSiteEdits() {
+    if (!state.site) return;
+    readRemote().then(function (cur) { cur.ops.forEach(applyOp); state.sitePending = cur.ops.length; render(); })
+      .catch(function (e) { toast(e && e.site ? e.message : 'Couldn’t check GitHub for your latest edits.', true); });
+  }
+
   var store = {
     setShift: function (id, data) {
       if (refs) { var ref = id ? refs.shifts.doc(id) : refs.shifts.doc(); return ref.set(data).then(function () { return ref.id; }); }
+      if (siteCanEdit()) { var sid = id || rid(); return siteOp('shift.set', sid, data).then(function () { return sid; }); }
       var nid = id || rid(), i = state.shifts.findIndex(function (s) { return s.id === nid; }), row = Object.assign({ id: nid }, data);
       if (i >= 0) state.shifts[i] = row; else state.shifts.push(row); return Promise.resolve(nid);
     },
-    patchShift: function (id, patch) { if (refs) return refs.shifts.doc(id).update(patch); var s = state.shifts.find(function (x) { return x.id === id; }); if (s) Object.assign(s, patch); return Promise.resolve(); },
-    delShift: function (id) { if (refs) return refs.shifts.doc(id).delete(); state.shifts = state.shifts.filter(function (s) { return s.id !== id; }); return Promise.resolve(); },
-    addChange: function (data) { var c = Object.assign({ at: new Date().toISOString(), by: 'you' }, data); if (refs) return refs.changes.doc().set(c); state.changes = state.changes.concat([Object.assign({ id: rid() }, c)]); return Promise.resolve(); },
-    setPayment: function (key, data) { if (refs) return refs.payments.doc(key).set(data); state.payments = Object.assign({}, state.payments); state.payments[key] = data; return Promise.resolve(); },
-    delPayment: function (key) { if (refs) return refs.payments.doc(key).delete(); state.payments = Object.assign({}, state.payments); delete state.payments[key]; return Promise.resolve(); },
-    setSettings: function (data) { if (refs) return refs.base.set(data); state.settings = Object.assign({}, DEFAULTS, data); return Promise.resolve(); }
+    patchShift: function (id, patch) { if (refs) return refs.shifts.doc(id).update(patch); if (siteCanEdit()) return siteOp('shift.patch', id, patch); var s = state.shifts.find(function (x) { return x.id === id; }); if (s) Object.assign(s, patch); return Promise.resolve(); },
+    delShift: function (id) { if (refs) return refs.shifts.doc(id).delete(); if (siteCanEdit()) return siteOp('shift.del', id, null); state.shifts = state.shifts.filter(function (s) { return s.id !== id; }); return Promise.resolve(); },
+    addChange: function (data) {
+      var c = Object.assign({ at: new Date().toISOString(), by: siteCanEdit() ? 'you (private site)' : 'you' }, data);
+      if (refs) return refs.changes.doc().set(c);
+      if (siteCanEdit()) return siteOp('change.add', rid(), c);
+      state.changes = state.changes.concat([Object.assign({ id: rid() }, c)]); return Promise.resolve();
+    },
+    setPayment: function (key, data) { if (refs) return refs.payments.doc(key).set(data); if (siteCanEdit()) return siteOp('payment.set', key, data); state.payments = Object.assign({}, state.payments); state.payments[key] = data; return Promise.resolve(); },
+    delPayment: function (key) { if (refs) return refs.payments.doc(key).delete(); if (siteCanEdit()) return siteOp('payment.del', key, null); state.payments = Object.assign({}, state.payments); delete state.payments[key]; return Promise.resolve(); },
+    setSettings: function (data) {
+      if (refs) return refs.base.set(data);
+      if (siteCanEdit()) {
+        var patch = {}; Object.keys(data).forEach(function (k) { if (JSON.stringify(data[k]) !== JSON.stringify(state.settings[k])) patch[k] = data[k]; });
+        return Object.keys(patch).length ? siteOp('settings.patch', 'tracker', patch) : Promise.resolve();
+      }
+      state.settings = Object.assign({}, DEFAULTS, data); return Promise.resolve();
+    }
   };
   function errText(e) {
+    if (e && e.site) return e.message;
+    if (e && e.name === 'TypeError' && state.mode === 'snapshot') return 'Couldn’t reach GitHub. Check your connection and try again.';
     var c = e && e.code;
     if (c === 'invalid_argument') return 'This view can’t save changes.';
     if (c === 'quota_exceeded') return 'Storage is full. Delete a few old shifts, then try again.';
@@ -895,8 +1000,16 @@ footer.foot { color: var(--muted); font-size: 12.5px; max-width: 90ch; display: 
   function write(fn, okMsg) {
     if (state.busy) return Promise.resolve(false);
     state.busy = true;
-    return Promise.resolve().then(fn).then(function () { if (okMsg) toast(okMsg); return true; })
-      .catch(function (e) { toast(errText(e), true); return false; })
+    var site = siteCanEdit(), backup = site ? JSON.stringify({ s: state.shifts, p: state.payments, c: state.changes, st: state.settings }) : null;
+    if (site) { siteQueue = []; toast('Saving…'); }
+    return Promise.resolve().then(fn)
+      .then(function () { if (site) { var q = siteQueue; siteQueue = null; if (q.length) return pushOps(q); } })
+      .then(function () { if (okMsg) toast(site ? okMsg + '. It’ll reach the Claude app at the next daily check.' : okMsg); return true; })
+      .catch(function (e) {
+        siteQueue = null;
+        if (backup) { var b = JSON.parse(backup); state.shifts = b.s; state.payments = b.p; state.changes = b.c; state.settings = b.st; }
+        toast(errText(e), true); return false;
+      })
       .then(function (ok) { state.busy = false; render(); return ok; });
   }
   function rawShift(id) { var s = state.shifts.find(function (x) { return x.id === id; }); if (!s) return null; var c = Object.assign({}, s); delete c.id; return c; }
@@ -1051,7 +1164,26 @@ footer.foot { color: var(--muted); font-size: 12.5px; max-width: 90ch; display: 
   document.addEventListener('click', function (e) {
     var b = e.target.closest('[data-action]'); if (!b) return;
     var a = b.getAttribute('data-action'), id = b.getAttribute('data-id'), key = b.getAttribute('data-key');
-    if (state.mode === 'snapshot' && ['view', 'go-needs', 'filter'].indexOf(a) < 0) return;
+    if (state.mode === 'snapshot') {
+      if (a === 'site-connect') { state.connectOpen = true; render(); var ti = document.getElementById('gh-token'); if (ti) ti.focus(); return; }
+      if (a === 'site-connect-cancel') { state.connectOpen = false; state.tokenDraft = ''; render(); return; }
+      if (a === 'site-disconnect') { try { localStorage.removeItem(TOKEN_KEY); } catch (err) {} document.body.classList.add('ro'); state.view = state.view; render(); toast('Editing turned off on this device'); return; }
+      if (a === 'site-connect-save') {
+        var tk = ((document.getElementById('gh-token') || {}).value || state.tokenDraft || '').trim();
+        if (!tk) { toast('Paste your GitHub key first.', true); return; }
+        toast('Checking the key…');
+        fetch('https://api.github.com/repos/' + state.site.repo, { headers: { Accept: 'application/vnd.github+json', Authorization: 'Bearer ' + tk }, cache: 'no-store' })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (j) {
+            if (!j || !j.permissions || !j.permissions.push) { toast('That key can’t change ' + state.site.repo + '. Check it has Contents: Read and write on that repo.', true); return; }
+            try { localStorage.setItem(TOKEN_KEY, tk); } catch (err) { toast('This browser won’t let the page remember the key (private browsing?).', true); return; }
+            state.connectOpen = false; state.tokenDraft = ''; document.body.classList.remove('ro'); render(); loadSiteEdits(); toast('Editing is on for this device');
+          })
+          .catch(function () { toast('Couldn’t reach GitHub. Check your connection and try again.', true); });
+        return;
+      }
+      if (!siteCanEdit() && ['view', 'go-needs', 'filter'].indexOf(a) < 0) return;
+    }
     var s = id ? state.shifts.find(function (x) { return x.id === id; }) : null;
     switch (a) {
       case 'view': state.view = b.getAttribute('data-view'); render(); window.scrollTo({ top: 0 }); break;
@@ -1093,6 +1225,7 @@ footer.foot { color: var(--muted); font-size: 12.5px; max-width: 90ch; display: 
     var t = e.target;
     if (t.id === 'pay-amt') state.payDraft.amount = t.value;
     if (t.id === 'pay-date') state.payDraft.date = t.value;
+    if (t.id === 'gh-token') state.tokenDraft = t.value;
     var dk = t.getAttribute && t.getAttribute('data-draft');
     if (dk) {
       var id = t.getAttribute('data-id'), d = state.drafts[id] || (state.drafts[id] = { in: '', out: '', brk: '0' });
@@ -1117,8 +1250,11 @@ footer.foot { color: var(--muted); font-size: 12.5px; max-width: 90ch; display: 
       state.mode = 'snapshot'; state.builtAt = SNAP.builtAt || '';
       state.settings = Object.assign({}, DEFAULTS, SNAP.settings || {});
       state.shifts = (SNAP.shifts || []).slice(); state.payments = SNAP.payments || {}; state.changes = (SNAP.changes || []).slice();
-      state.loaded = true; document.body.classList.add('ro');
-      render(); setInterval(render, 60000); return;
+      state.site = SNAP.sync && SNAP.sync.repo && SNAP.sync.key ? SNAP.sync : null;
+      state.loaded = true; document.body.classList.toggle('ro', !siteCanEdit());
+      render(); loadSiteEdits();
+      setInterval(function () { var a = document.activeElement; if (!a || !a.closest || !a.closest('#action, #period-list, #shift-list, #shift-form, #settings, #banners')) render(); }, 60000);
+      return;
     }
     render();
     waitForClaude().then(function (c) {
