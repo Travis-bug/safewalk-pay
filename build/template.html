@@ -148,6 +148,7 @@ h3 { font-family: var(--f-display); font-weight: 600; font-size: 19px; letter-sp
 .c-muted { background: var(--surface-2); color: var(--muted); border: 1px solid var(--line); }
 .c-role { background: transparent; color: var(--muted); border: 1px solid var(--line); }
 .c-role.r-training, .c-role.r-event { color: var(--accent-ink); border-color: var(--accent-ink); }
+.c-role.r-ambassador { color: var(--info); border-color: var(--info); }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 
 /* Lists */
@@ -362,7 +363,7 @@ footer.foot { color: var(--muted); font-size: 12.5px; max-width: 90ch; display: 
         <div class="grid">
           <label class="field"><span>Date</span><input id="f-date" type="date" required></label>
           <label class="field"><span>What kind</span><select id="f-origin"><option value="schedule">On my schedule</option><option value="extra">Extra shift I picked up</option><option value="training">Training or event</option></select></label>
-          <label class="field"><span>Role</span><select id="f-role"><option>Captain</option><option>Walker</option><option>Training</option><option>Event</option></select></label>
+          <label class="field"><span>Role</span><select id="f-role"><option>Captain</option><option>Walker</option><option>Training</option><option>Event</option><option>Ambassador</option></select></label>
           <label class="field"><span>Campus</span><select id="f-loc"><option value="CL">Casa Loma</option><option value="SJ">St. James</option><option value="HOSP">Hospitality</option><option value="WF">Waterfront</option><option value="">Not sure / other</option></select></label>
           <label class="field"><span>Status</span><select id="f-status"><option value="scheduled">Working it</option><option value="swapped">Swapped away</option><option value="cancelled">Dropped / cancelled</option></select></label>
           <label class="field"><span>Time sheet</span><select id="f-sheet"><option value="">Not tracked</option><option value="missing">Not sent yet</option><option value="fix">Needs a fix</option><option value="sent">Sent to your coordinator</option></select></label>
@@ -432,7 +433,7 @@ footer.foot { color: var(--muted); font-size: 12.5px; max-width: 90ch; display: 
     ['2027-07-01', 'Canada Day'], ['2027-09-06', 'Labour Day'], ['2027-10-11', 'Thanksgiving'], ['2027-12-25', 'Christmas Day'], ['2027-12-26', 'Boxing Day']
   ];
   var LOC = { CL: 'Casa Loma', SJ: 'St. James', HOSP: 'Hospitality', WF: 'Waterfront' };
-  var ROLE_TIMES = { Captain: ['18:15', '22:45'], Walker: ['18:30', '22:30'], Training: ['10:00', '13:00'], Event: ['10:00', '13:00'] };
+  var ROLE_TIMES = { Captain: ['18:15', '22:45'], Walker: ['18:30', '22:30'], Training: ['10:00', '13:00'], Event: ['10:00', '13:00'], Ambassador: ['11:00', '14:00'] };
   var WF_TIMES = { Captain: ['18:15', '22:15'], Walker: ['18:30', '22:00'] };
   var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var MONTHS_LONG = ['January','February','March','April','May','June','July','August','September','October','November','December'];
