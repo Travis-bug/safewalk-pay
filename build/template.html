@@ -94,6 +94,9 @@ main.wrap { display: grid; gap: 20px; padding-block: 20px 44px; }
 .banner p { margin: 0; max-width: 80ch; }
 .banner.warn { background: var(--wait-bg); }
 #banners { display: grid; gap: 10px; }
+.banner.site-note { transition: opacity .45s ease, transform .45s ease; }
+.banner.site-note.fading { opacity: 0; transform: translateY(-6px); }
+@media (prefers-reduced-motion: reduce) { .banner.site-note { transition: none; } }
 
 /* Panels */
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; min-width: 0; }
@@ -634,13 +637,19 @@ footer.foot { color: var(--muted); font-size: 12.5px; max-width: 90ch; display: 
     if (st.lastChecked) { cp.hidden = false; cp.innerHTML = '<span class="dot"></span>Claude checked ' + esc(fmtStamp(st.lastChecked)); cp.title = st.lastCheckNote || ''; }
     else cp.hidden = true;
   }
+  function hideSiteNote() {
+    var el = document.querySelector('#banners .site-note');
+    if (!el) { state.siteNoteHidden = true; return; }
+    el.classList.add('fading');
+    setTimeout(function () { state.siteNoteHidden = true; renderBanners(); }, 450);
+  }
   function renderBanners() {
     var html = '';
     if (state.mode === 'local') html += '<div class="banner warn"><p>Changes on this page aren’t saved in this view. Open it in Claude while signed in to keep your shifts.</p></div>';
     if (state.mode === 'snapshot') {
-      var upd = esc(fmtStamp(state.builtAt) || 'recently'), pend = state.sitePending ? ' ' + state.sitePending + ' edit' + (state.sitePending === 1 ? '' : 's') + ' made here will reach the Claude app at the next daily check.' : '';
-      if (siteCanEdit()) html += '<div class="banner"><p><strong>Editing is on for this device.</strong> Claude last rebuilt this copy ' + upd + '.' + esc(pend) + '</p><div class="b-actions"><button class="link" type="button" data-action="site-disconnect">Turn off</button></div></div>';
-      else if (!state.site) html += '<div class="banner"><p><strong>View-only copy</strong>, updated ' + upd + '. To log times or change anything, use the app in Claude or message Claude.</p></div>';
+      var upd = esc(fmtStamp(state.builtAt) || 'recently'), pend = state.sitePending ? ' ' + state.sitePending + ' edit' + (state.sitePending === 1 ? '' : 's') + ' made here will reach the Claude app at the next check.' : '';
+      if (siteCanEdit()) { if (!state.siteNoteHidden) html += '<div class="banner site-note"><p><strong>Editing is on for this device.</strong> Claude last rebuilt this copy ' + upd + '.' + esc(pend) + '</p><div class="b-actions"><button class="link" type="button" data-action="site-disconnect">Turn off</button></div></div>'; }
+      else if (!state.site) { if (!state.siteNoteHidden) html += '<div class="banner site-note"><p><strong>View-only copy</strong>, updated ' + upd + '. To log times or change anything, use the app in Claude or message Claude.</p></div>'; }
       else if (!state.connectOpen) html += '<div class="banner"><p><strong>View-only on this device</strong>, updated ' + upd + '.' + esc(pend) + ' Turn on editing to log times and change shifts here.</p><div class="b-actions"><button class="link" type="button" data-action="site-connect">Turn on editing</button></div></div>';
       else html += '<div class="banner"><div style="flex:1"><p><strong>Turn on editing for this device</strong></p><div class="connect">' +
         '<ol><li>On GitHub, open Settings → Developer settings → Personal access tokens → <b>Fine-grained tokens</b> → Generate new token.</li>' +
@@ -1081,7 +1090,7 @@ footer.foot { color: var(--muted); font-size: 12.5px; max-width: 90ch; display: 
     if (site) { siteQueue = []; toast('Saving…'); }
     return Promise.resolve().then(fn)
       .then(function () { if (site) { var q = siteQueue; siteQueue = null; if (q.length) return pushOps(q); } })
-      .then(function () { if (okMsg) toast(site ? okMsg + '. It’ll reach the Claude app at the next daily check.' : okMsg); return true; })
+      .then(function () { if (okMsg) toast(site ? okMsg + '. It’ll reach the Claude app at the next check.' : okMsg); return true; })
       .catch(function (e) {
         siteQueue = null;
         if (backup) { var b = JSON.parse(backup); state.shifts = b.s; state.payments = b.p; state.changes = b.c; state.settings = b.st; }
@@ -1331,6 +1340,7 @@ footer.foot { color: var(--muted); font-size: 12.5px; max-width: 90ch; display: 
       state.site = SNAP.sync && SNAP.sync.repo && SNAP.sync.key ? SNAP.sync : null;
       state.loaded = true; document.body.classList.toggle('ro', !siteCanEdit());
       render(); loadSiteEdits();
+      setTimeout(hideSiteNote, 3500);
       setInterval(function () { var a = document.activeElement; if (!a || !a.closest || !a.closest('#action, #period-list, #shift-list, #shift-form, #settings, #banners')) render(); }, 60000);
       return;
     }
