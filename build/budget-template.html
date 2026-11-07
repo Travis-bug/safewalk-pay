@@ -482,18 +482,29 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
   function colorOf(a) { return ACCT[a] ? ACCT[a].color : (a === 'bill' ? 'var(--c-bill)' : (a === 'spend' ? 'var(--c-spend)' : 'var(--muted)')); }
   function partsOf(s) {
     if (!s) return [];
-    if (s.custom && Array.isArray(s.parts)) return s.parts.map(function (p) { return { key: p.key, account: p.account || 'other', name: p.name, amount: r2(p.amount), color: colorOf(p.account), detail: p.detail || '', short: p.short || '', move: p.move !== false }; });
+    if (s.custom && Array.isArray(s.parts)) return s.parts.map(function (p) { return { key: p.key, account: p.account || 'other', name: p.name, amount: r2(p.amount), color: colorOf(p.account), detail: p.detail || '', short: p.short || '', move: p.move !== false, via: p.via || '' }; });
     return ['card', 'koho', 'savings'].map(function (k) { return { key: k, account: k, name: ACCT[k].name, amount: r2(s[k]), color: ACCT[k].color, detail: HOW[k], short: '', move: true }; });
   }
   function groupsOf(s) {
     var out = [], idx = {};
     partsOf(s).forEach(function (p) {
-      if (!(p.amount > 0)) return;
+      if (!(p.amount > 0) || p.via) return;
       var k = (p.account === 'card' || p.account === 'koho' || p.account === 'savings' || p.account === 'chq') ? p.account : p.key;
       if (idx[k] == null) { idx[k] = out.length; out.push({ key: k, name: p.account === 'chq' ? 'Kept in BMO Chequing' : (k === p.account ? ACCT[k].name : p.name), amount: 0, color: p.color, pieces: [], short: p.short }); }
       var gr = out[idx[k]]; gr.amount = r2(gr.amount + p.amount); gr.pieces.push(p.amount);
     });
     out.forEach(function (gr) { gr.sub = gr.pieces.length > 1 ? gr.pieces.map(function (v) { return money0.format(v); }).join(' + ') : gr.short; });
+    return out;
+  }
+  function usesOf(s) {
+    var gs = groupsOf(s); if (!s || !s.custom) return gs;
+    var via = partsOf(s).filter(function (p) { return p.via === 'card' && p.amount > 0; }), out = [];
+    gs.forEach(function (gr) {
+      if (gr.key !== 'card' || !via.length) { out.push(gr); return; }
+      var used = 0;
+      via.forEach(function (p) { out.push({ key: p.key, name: p.name, amount: p.amount, color: p.color, sub: 'paid with the card' }); used += p.amount; });
+      var rest = r2(gr.amount - used); if (rest > 0.004) out.push({ key: 'card-rest', name: 'Older card balance', amount: rest, color: gr.color, sub: 'paid down' });
+    });
     return out;
   }
   function totalOf(s) { return s && s.custom ? r2(s.total) : r2(s && s.amount); }
@@ -570,7 +581,7 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
         }
         var done = !!m[p.key];
         html += '<div class="move' + (done ? ' done' : '') + '"><span class="bar" style="background:' + p.color + '"></span>' +
-          '<div class="what"><b>BMO Chequing → ' + esc(p.name) + '</b>' + (p.detail ? '<span class="small muted">' + esc(p.detail) + '</span>' : '') + '</div>' +
+          '<div class="what"><b>' + (p.via === 'card' ? 'RBC ION Visa' : 'BMO Chequing') + ' → ' + esc(p.name) + '</b>' + (p.detail ? '<span class="small muted">' + esc(p.detail) + '</span>' : '') + '</div>' +
           '<div class="amt">' + esc(money.format(p.amount)) + '</div>' +
           '<div class="acts">' + (s.custom ? chip(done ? 'Done' : 'Not done yet', done ? 'c-good' : 'c-warn') : (canEdit ? '<button type="button" class="tick" data-action="move" data-id="' + esc(la.payday) + '" data-k="' + esc(p.key) + '" aria-pressed="' + done + '"><i>' + (done ? '✓' : '') + '</i>' + (done ? 'Sent ' + esc(fmtStamp(m[p.key])) : 'Mark as sent') + '</button>' : (done ? chip('Sent', 'c-good') : chip('Not sent yet', 'c-warn')))) +
           (p.key === 'koho' && s.billTotal > 0 ? '<span class="small muted">' + esc(money.format(s.billTotal)) + ' of it is for bills</span>' : '') + '</div></div>';
@@ -599,19 +610,19 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
   /* ---------- donut + money flow ---------- */
   function donutSvg(s) {
     var C = 2 * Math.PI * 44, off = 0, segs = '', tot = totalOf(s);
-    groupsOf(s).forEach(function (gr, i) {
+    usesOf(s).forEach(function (gr, i) {
       if (!(tot > 0)) return;
       var len = C * gr.amount / tot;
       segs += '<circle class="seg" cx="60" cy="60" r="44" stroke="' + gr.color + '" stroke-dasharray="' + len.toFixed(2) + ' ' + (C - len + 0.01).toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '" style="--d:' + (i * 0.18) + 's"><title>' + esc(gr.name + ': ' + money.format(gr.amount)) + '</title></circle>';
       off += len;
     });
     return '<svg class="donut" viewBox="0 0 120 120" role="img" aria-label="Split of ' + esc(money.format(tot)) + '"><circle class="track" cx="60" cy="60" r="44"></circle>' + segs +
-      '<text x="60" y="57" text-anchor="middle" font-size="13" font-weight="600">' + esc(money0.format(tot)) + '</text><text class="sub" x="60" y="71" text-anchor="middle">' + (s.custom ? 'MOVED' : 'THIS CHEQUE') + '</text></svg>';
+      '<text x="60" y="57" text-anchor="middle" font-size="13" font-weight="600">' + esc(money0.format(tot)) + '</text><text class="sub" x="60" y="71" text-anchor="middle">' + (s.custom && s.fromBalance > 0 ? 'MOVED' : 'THIS CHEQUE') + '</text></svg>';
   }
   function pctChips(s) {
     var tot = totalOf(s), out = '';
     if (!(tot > 0)) return '<div class="pcts"></div>';
-    groupsOf(s).forEach(function (gr, i) {
+    usesOf(s).forEach(function (gr, i) {
       var p = Math.round(gr.amount / tot * 1000) / 10;
       out += '<div class="pct" style="--d:' + (i * 0.12) + 's"><span class="p" style="color:' + gr.color + '">' + (Number.isInteger(p) ? p : p.toFixed(1)) + '%</span><span class="n">' + esc(gr.name) + '</span></div>';
     });
@@ -663,7 +674,15 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
   }
   function flowSvg(s, label) {
     var cols, links = [];
-    if (s.custom) {
+    if (s.custom && !(s.fromBalance > 0)) {
+      var top = { id: 'chq', name: (s.sources && s.sources[0] && s.sources[0].name) || label || 'BMO Chequing', v: totalOf(s), color: ACCT.chq.color };
+      var accs = groupsOf(s).map(function (gr) { return { id: 'g-' + gr.key, name: gr.name, v: gr.amount, color: gr.color }; });
+      var viaKeys = {}; partsOf(s).forEach(function (p) { if (p.via === 'card') viaKeys[p.key] = 1; }); viaKeys['card-rest'] = 1;
+      var paid = usesOf(s).filter(function (u) { return viaKeys[u.key]; }).map(function (u) { return { id: 'u-' + u.key, name: u.name, v: u.amount, color: u.color, sub: u.sub }; });
+      cols = [[top], accs, paid];
+      accs.forEach(function (n) { links.push({ from: 'chq', to: n.id, v: n.v, color: n.color }); });
+      paid.forEach(function (n) { links.push({ from: 'g-card', to: n.id, v: n.v, color: n.color }); });
+    } else if (s.custom) {
       var src = (s.sources || []).filter(function (x) { return x.amount > 0; }).map(function (x, i) { return { id: 'src' + i, name: x.name, v: r2(x.amount), color: colorOf(x.account || 'other') }; });
       var mid = { id: 'chq', name: 'BMO Chequing', v: totalOf(s), color: ACCT.chq.color };
       var dst = groupsOf(s).map(function (gr) { return { id: 'g-' + gr.key, name: gr.name, v: gr.amount, color: gr.color, sub: gr.sub }; });
@@ -686,7 +705,10 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
   }
   function splitBlock(s, label) {
     var kv = s.custom
-      ? '<dt>From the cheque</dt><dd>' + esc(money.format(s.amount)) + '</dd>' + (s.fromBalance > 0 ? '<dt>Already in BMO</dt><dd>' + esc(money.format(s.fromBalance)) + '</dd>' : '') + '<dt>Total moved</dt><dd class="big2">' + esc(money.format(totalOf(s))) + '</dd><dt>Plan used</dt><dd>Your own split</dd>'
+      ? '<dt>From the cheque</dt><dd>' + esc(money.format(s.amount)) + '</dd>' + (s.fromBalance > 0 ? '<dt>Already in BMO</dt><dd>' + esc(money.format(s.fromBalance)) + '</dd><dt>Total moved</dt><dd class="big2">' + esc(money.format(totalOf(s))) + '</dd>' : '') +
+        groupsOf(s).map(function (gr) { return '<dt>' + esc(gr.key === 'chq' ? 'Left in BMO Chequing' : 'To ' + gr.name) + '</dt><dd' + (gr.key === 'card' ? ' class="big2"' : '') + '>' + esc(money.format(gr.amount)) + '</dd>'; }).join('') +
+        partsOf(s).filter(function (p) { return p.via === 'card' && p.amount > 0; }).map(function (p) { return '<dt>' + esc(p.name) + ', paid with the card</dt><dd>' + esc(money.format(p.amount)) + '</dd>'; }).join('') +
+        '<dt>Plan used</dt><dd>Your own split</dd>'
       : '<dt>Bills due before ' + esc(fmtMD(s.nextPayday)) + '</dt><dd>' + esc(money.format(s.billTotal)) + '</dd><dt>Left to spend in KOHO</dt><dd class="big2" style="color:' + (s.spend < 0 ? 'var(--bad)' : 'inherit') + '">' + esc(money.format(s.spend)) + '</dd><dt>Plan used</dt><dd>' + esc(s.phase === 'steady' ? 'Card paid off' : 'Paying down card') + '</dd>';
     return '<div class="split-top"><div>' + donutSvg(s) + '</div><div style="display:grid;gap:12px">' + pctChips(s) +
       '<div class="kv" style="max-width:420px">' + kv + '</div>' +
