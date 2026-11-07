@@ -478,7 +478,26 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
   function expNet(c) { return c && c.expected && c.expected.net != null ? Number(c.expected.net) : null; }
   function splitOf(c) { if (!c) return null; if (c.split && c.split.amount != null) return c.split; var amt = c.actual ? c.actual.amount : expNet(c); return amt == null ? null : ENGINE.compute(state.settings, state.bills, amt, dayNum(c.payday)); }
   function liveSplit(c, amt) { return ENGINE.compute(state.settings, state.bills, amt, dayNum(c.payday)); }
-  function movedCount(c) { var m = c.moved || {}, s = splitOf(c), n = 0, tot = 0; ['card', 'koho', 'savings'].forEach(function (k) { if (s && s[k] > 0) { tot++; if (m[k]) n++; } }); return { n: n, tot: tot }; }
+  /* A split is either the rules-based one (card / KOHO / savings) or one Travis set himself (custom: true, with parts and sources). */
+  function colorOf(a) { return ACCT[a] ? ACCT[a].color : (a === 'bill' ? 'var(--c-bill)' : (a === 'spend' ? 'var(--c-spend)' : 'var(--muted)')); }
+  function partsOf(s) {
+    if (!s) return [];
+    if (s.custom && Array.isArray(s.parts)) return s.parts.map(function (p) { return { key: p.key, account: p.account || 'other', name: p.name, amount: r2(p.amount), color: colorOf(p.account), detail: p.detail || '', short: p.short || '', move: p.move !== false }; });
+    return ['card', 'koho', 'savings'].map(function (k) { return { key: k, account: k, name: ACCT[k].name, amount: r2(s[k]), color: ACCT[k].color, detail: HOW[k], short: '', move: true }; });
+  }
+  function groupsOf(s) {
+    var out = [], idx = {};
+    partsOf(s).forEach(function (p) {
+      if (!(p.amount > 0)) return;
+      var k = (p.account === 'card' || p.account === 'koho' || p.account === 'savings' || p.account === 'chq') ? p.account : p.key;
+      if (idx[k] == null) { idx[k] = out.length; out.push({ key: k, name: p.account === 'chq' ? 'Kept in BMO Chequing' : (k === p.account ? ACCT[k].name : p.name), amount: 0, color: p.color, pieces: [], short: p.short }); }
+      var gr = out[idx[k]]; gr.amount = r2(gr.amount + p.amount); gr.pieces.push(p.amount);
+    });
+    out.forEach(function (gr) { gr.sub = gr.pieces.length > 1 ? gr.pieces.map(function (v) { return money0.format(v); }).join(' + ') : gr.short; });
+    return out;
+  }
+  function totalOf(s) { return s && s.custom ? r2(s.total) : r2(s && s.amount); }
+  function movedCount(c) { var m = c.moved || {}, n = 0, tot = 0; partsOf(splitOf(c)).forEach(function (p) { if (p.move && p.amount > 0) { tot++; if (m[p.key]) n++; } }); return { n: n, tot: tot }; }
   function savingsTotal() {
     var st = state.settings, t = Number(st.savingsStart) || 0;
     confirmed().forEach(function (c) { if (c.moved && c.moved.savings && c.split) t += Number(c.split.savings) || 0; });
@@ -519,7 +538,7 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
     if (la) { var mc = movedCount(la); h += head('Money moved', mc.n + ' of ' + mc.tot, mc.n === mc.tot ? 'All moved for ' + esc(fmtMD(dayNum(la.payday))) : 'From your ' + esc(fmtMD(dayNum(la.payday))) + ' cheque', mc.n === mc.tot ? 'good' : 'warn'); }
     else h += head('Money moved', '—', 'Nothing to move yet');
     var s = la ? splitOf(la) : null;
-    if (s) h += head('Left to spend', esc(money.format(s.spend)), 'In KOHO after bills, to ' + esc(fmtMD(s.nextPayday - 1)), s.spend < 0 ? 'bad' : (s.spend < 60 ? 'warn' : ''));
+    if (s) h += head('Left to spend', esc(money.format(s.spend)), s.custom ? esc(s.spendNote || 'Left after this cheque') : 'In KOHO after bills, to ' + esc(fmtMD(s.nextPayday - 1)), s.spend < 0 ? 'bad' : (s.spend < 60 ? 'warn' : ''));
     else h += head('Left to spend', '—', 'Shows after your first split');
     var sv = savingsTotal(), goal = Number(state.settings.shieldGoal) || 1000;
     h += head('Savings shield', esc(money.format(sv)), Math.round(Math.min(100, sv / goal * 100)) + '% of ' + esc(money0.format(goal)), sv > 0 ? 'good' : '');
@@ -542,19 +561,23 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
     }
     if (la) {
       var s = splitOf(la), m = la.moved || {}, mc = movedCount(la);
-      html += '<div><p class="small muted">From your <b>' + esc(fmtWMD(dayNum(la.payday))) + '</b> cheque of ' + esc(money.format(la.actual.amount)) + (mc.n === mc.tot ? '. Everything is moved.' : '. Tick each one when you’ve sent it.') + '</p></div><div class="todo">';
-      ['card', 'koho', 'savings'].forEach(function (k) {
-        if (!(s[k] > 0)) return;
-        var done = !!m[k];
-        html += '<div class="move' + (done ? ' done' : '') + '"><span class="bar" style="background:' + ACCT[k].color + '"></span>' +
-          '<div class="what"><b>BMO Chequing → ' + esc(ACCT[k].name) + '</b><span class="small muted">' + esc(HOW[k]) + '</span></div>' +
-          '<div class="amt">' + esc(money.format(s[k])) + '</div>' +
-          '<div class="acts">' + (canEdit ? '<button type="button" class="tick" data-action="move" data-id="' + esc(la.payday) + '" data-k="' + k + '" aria-pressed="' + done + '"><i>' + (done ? '✓' : '') + '</i>' + (done ? 'Sent ' + esc(fmtStamp(m[k])) : 'Mark as sent') + '</button>' : (done ? chip('Sent', 'c-good') : chip('Not sent yet', 'c-warn'))) +
-          (k === 'koho' && s.billTotal > 0 ? '<span class="small muted">' + esc(money.format(s.billTotal)) + ' of it is for bills</span>' : '') + '</div></div>';
+      html += '<div><p class="small muted">From your <b>' + esc(fmtWMD(dayNum(la.payday))) + '</b> cheque of ' + esc(money.format(la.actual.amount)) + (s.custom && s.fromBalance > 0 ? ' plus ' + esc(money.format(s.fromBalance)) + ' already in BMO' : '') + (mc.n === mc.tot ? '. Everything is moved.' : '. Tick each one when you\u2019ve sent it.') + '</p></div><div class="todo">';
+      partsOf(s).forEach(function (p) {
+        if (!(p.amount > 0)) return;
+        if (!p.move) {
+          html += '<div class="move"><span class="bar" style="background:' + p.color + '"></span><div class="what"><b>Stayed in BMO Chequing</b>' + (p.detail ? '<span class="small muted">' + esc(p.detail) + '</span>' : '') + '</div><div class="amt">' + esc(money.format(p.amount)) + '</div><div class="acts">' + chip('Kept', 'c-muted') + '</div></div>';
+          return;
+        }
+        var done = !!m[p.key];
+        html += '<div class="move' + (done ? ' done' : '') + '"><span class="bar" style="background:' + p.color + '"></span>' +
+          '<div class="what"><b>BMO Chequing → ' + esc(p.name) + '</b>' + (p.detail ? '<span class="small muted">' + esc(p.detail) + '</span>' : '') + '</div>' +
+          '<div class="amt">' + esc(money.format(p.amount)) + '</div>' +
+          '<div class="acts">' + (s.custom ? chip(done ? 'Done' : 'Not done yet', done ? 'c-good' : 'c-warn') : (canEdit ? '<button type="button" class="tick" data-action="move" data-id="' + esc(la.payday) + '" data-k="' + esc(p.key) + '" aria-pressed="' + done + '"><i>' + (done ? '✓' : '') + '</i>' + (done ? 'Sent ' + esc(fmtStamp(m[p.key])) : 'Mark as sent') + '</button>' : (done ? chip('Sent', 'c-good') : chip('Not sent yet', 'c-warn')))) +
+          (p.key === 'koho' && s.billTotal > 0 ? '<span class="small muted">' + esc(money.format(s.billTotal)) + ' of it is for bills</span>' : '') + '</div></div>';
       });
       html += '</div>';
-      if (s.notes && s.notes.length) html += '<div class="banner warn"><p>' + s.notes.map(esc).join(' ') + '</p></div>';
-      if (canEdit) html += '<div class="row"><button class="link" type="button" data-action="reconfirm" data-id="' + esc(la.payday) + '">Fix the amount for this cheque</button></div>';
+      if (s.notes && s.notes.length) html += '<div class="banner' + (s.custom ? '' : ' warn') + '"><p>' + s.notes.map(esc).join(' ') + '</p></div>';
+      if (canEdit && !s.custom) html += '<div class="row"><button class="link" type="button" data-action="reconfirm" data-id="' + esc(la.payday) + '">Fix the amount for this cheque</button></div>';
     }
     if (!showConfirm) {
       var en2 = expNet(nx);
@@ -575,68 +598,99 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
 
   /* ---------- donut + money flow ---------- */
   function donutSvg(s) {
-    var C = 2 * Math.PI * 44, off = 0, segs = '', keys = ['card', 'koho', 'savings'], i = 0;
-    keys.forEach(function (k) {
-      var v = s[k]; if (!(v > 0) || !(s.amount > 0)) return;
-      var len = C * v / s.amount;
-      segs += '<circle class="seg" cx="60" cy="60" r="44" stroke="' + ACCT[k].color + '" stroke-dasharray="' + len.toFixed(2) + ' ' + (C - len + 0.01).toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '" style="--d:' + (i * 0.18) + 's"><title>' + esc(ACCT[k].name + ': ' + money.format(v)) + '</title></circle>';
-      off += len; i++;
+    var C = 2 * Math.PI * 44, off = 0, segs = '', tot = totalOf(s);
+    groupsOf(s).forEach(function (gr, i) {
+      if (!(tot > 0)) return;
+      var len = C * gr.amount / tot;
+      segs += '<circle class="seg" cx="60" cy="60" r="44" stroke="' + gr.color + '" stroke-dasharray="' + len.toFixed(2) + ' ' + (C - len + 0.01).toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '" style="--d:' + (i * 0.18) + 's"><title>' + esc(gr.name + ': ' + money.format(gr.amount)) + '</title></circle>';
+      off += len;
     });
-    return '<svg class="donut" viewBox="0 0 120 120" role="img" aria-label="Split of ' + esc(money.format(s.amount)) + '"><circle class="track" cx="60" cy="60" r="44"></circle>' + segs +
-      '<text x="60" y="57" text-anchor="middle" font-size="13" font-weight="600">' + esc(money0.format(s.amount)) + '</text><text class="sub" x="60" y="71" text-anchor="middle">THIS CHEQUE</text></svg>';
+    return '<svg class="donut" viewBox="0 0 120 120" role="img" aria-label="Split of ' + esc(money.format(tot)) + '"><circle class="track" cx="60" cy="60" r="44"></circle>' + segs +
+      '<text x="60" y="57" text-anchor="middle" font-size="13" font-weight="600">' + esc(money0.format(tot)) + '</text><text class="sub" x="60" y="71" text-anchor="middle">' + (s.custom ? 'MOVED' : 'THIS CHEQUE') + '</text></svg>';
   }
   function pctChips(s) {
-    var keys = ['card', 'koho', 'savings'], out = '', i = 0;
-    keys.forEach(function (k) {
-      var v = s[k]; if (!(s.amount > 0)) return;
-      var p = Math.round(v / s.amount * 1000) / 10;
-      out += '<div class="pct" style="--d:' + (i * 0.12) + 's"><span class="p" style="color:' + ACCT[k].color + '">' + (Number.isInteger(p) ? p : p.toFixed(1)) + '%</span><span class="n">' + esc(ACCT[k].name) + '</span></div>'; i++;
+    var tot = totalOf(s), out = '';
+    if (!(tot > 0)) return '<div class="pcts"></div>';
+    groupsOf(s).forEach(function (gr, i) {
+      var p = Math.round(gr.amount / tot * 1000) / 10;
+      out += '<div class="pct" style="--d:' + (i * 0.12) + 's"><span class="p" style="color:' + gr.color + '">' + (Number.isInteger(p) ? p : p.toFixed(1)) + '%</span><span class="n">' + esc(gr.name) + '</span></div>';
     });
     return '<div class="pcts">' + out + '</div>';
   }
   function trunc(t, n) { t = String(t || ''); return t.length > n ? t.slice(0, n - 1) + '…' : t; }
+  /* Small Sankey: columns of nodes {id, name, v, color, sub}; links {from, to, v, color}.
+     First column is labelled on the left, middle columns on a pill, the last column on the right. */
+  function sankeySvg(cols, links, aria) {
+    cols = cols.filter(function (c) { return c && c.length; });
+    var XS = cols.length >= 3 ? [132, 336, 520] : (cols.length === 2 ? [180, 420] : [180]);
+    var W = 720, nodeW = 12, top = 14, byId = {}, colH = [], maxTot = 0;
+    cols.forEach(function (c) { var t = c.reduce(function (a, n) { return a + n.v; }, 0); if (t > maxTot) maxTot = t; });
+    var scale = 250 / Math.max(1, maxTot);
+    cols.forEach(function (c, ci) {
+      var side = ci === 0 ? 'left' : (ci === cols.length - 1 ? 'right' : 'pill'), y = 0;
+      c.forEach(function (n, i) {
+        n.side = side; n.x = XS[Math.min(ci, XS.length - 1)]; n.h = Math.max(3, n.v * scale);
+        n.slot = side === 'right' ? Math.max(n.h, 36) : Math.max(n.h, 44); n.y = y; n.out = 0; n.inn = 0; byId[n.id] = n;
+        y += n.slot + (i < c.length - 1 ? (side === 'right' ? 8 : 22) : 0);
+      });
+      colH[ci] = y;
+    });
+    var H0 = Math.max.apply(null, colH);
+    cols.forEach(function (c, ci) { var off = top + (H0 - colH[ci]) / 2; c.forEach(function (n) { n.y += off; n.ry = n.side === 'right' ? n.y : n.y + (n.slot - n.h) / 2; }); });
+    links = links.filter(function (l) { return byId[l.from] && byId[l.to] && l.v > 0; });
+    links.sort(function (a, b) { var A = byId[a.from], B = byId[b.from]; return (A.x - B.x) || (A.y - B.y) || (byId[a.to].y - byId[b.to].y); });
+    var g = '';
+    links.forEach(function (l, i) {
+      var a = byId[l.from], b = byId[l.to], t = l.v * scale, dt = Math.max(t, 0.7), y1 = a.ry + a.out, y2 = b.ry + b.inn;
+      a.out += t; b.inn += t;
+      var x1 = a.x + nodeW, x2 = b.x, mx = (x1 + x2) / 2;
+      g += '<path class="lk" style="--d:' + (0.08 + i * 0.06).toFixed(2) + 's" fill="' + l.color + '" fill-opacity="0.32" d="M' + x1 + ',' + y1.toFixed(1) + ' C' + mx + ',' + y1.toFixed(1) + ' ' + mx + ',' + y2.toFixed(1) + ' ' + x2 + ',' + y2.toFixed(1) + ' L' + x2 + ',' + (y2 + dt).toFixed(1) + ' C' + mx + ',' + (y2 + dt).toFixed(1) + ' ' + mx + ',' + (y1 + dt).toFixed(1) + ' ' + x1 + ',' + (y1 + dt).toFixed(1) + ' Z"></path>';
+    });
+    cols.forEach(function (c) {
+      c.forEach(function (n) {
+        g += '<rect x="' + n.x + '" y="' + n.ry.toFixed(1) + '" width="' + nodeW + '" height="' + n.h.toFixed(1) + '" rx="2" fill="' + n.color + '"><title>' + esc(n.name + ': ' + money.format(n.v)) + '</title></rect>';
+        if (n.side === 'right') {
+          var lx = n.x + nodeW + 10, ty = n.ry + Math.max(0, (n.h - 32) / 2);
+          g += '<text x="' + lx + '" y="' + (ty + 12).toFixed(1) + '">' + esc(trunc(n.name, 26)) + '</text><text x="' + lx + '" y="' + (ty + 29).toFixed(1) + '"><tspan class="amt">' + esc(money.format(n.v)) + '</tspan>' + (n.sub ? '<tspan class="mut" dx="6">' + esc(n.sub) + '</tspan>' : '') + '</text>';
+        } else {
+          var tx = n.x - 10, cy = n.ry + n.h / 2;
+          if (n.side === 'pill') { var w = Math.max(n.name.length * 7.6, money.format(n.v).length * 8.3) + 18; g += '<rect class="pill" x="' + (tx - w + 6).toFixed(1) + '" y="' + (cy - 20).toFixed(1) + '" width="' + w.toFixed(1) + '" height="40" rx="6"></rect>'; }
+          g += '<text x="' + tx + '" y="' + (cy - 3).toFixed(1) + '" text-anchor="end">' + esc(n.name) + '</text><text class="amt" x="' + tx + '" y="' + (cy + 14).toFixed(1) + '" text-anchor="end">' + esc(money.format(n.v)) + '</text>';
+        }
+      });
+    });
+    return '<svg class="flow" viewBox="0 0 ' + W + ' ' + Math.ceil(top + H0 + 16) + '" role="img" aria-label="' + esc(aria) + '">' + g + '</svg>';
+  }
   function flowSvg(s, label) {
-    var W = 720, nodeW = 12, c0 = 132, c1 = 336, c2 = 520, top = 14, scale = 250 / Math.max(1, s.amount), gap = 24;
-    var col1 = [];
-    ['card', 'koho', 'savings'].forEach(function (k) { if (s[k] > 0) col1.push({ k: k, v: s[k], h: Math.max(3, s[k] * scale) }); });
-    var y = top; col1.forEach(function (n) { n.y = y; y += n.h + gap; });
-    var col1Bottom = y - gap, totalH1 = col1Bottom - top;
-    var h0 = Math.max(3, s.amount * scale), y0 = top + (totalH1 - h0) / 2;
-    var kids = [], kohoNode = col1.filter(function (n) { return n.k === 'koho'; })[0];
-    if (kohoNode) {
-      s.bills.forEach(function (b) { kids.push({ name: b.name, v: b.amount, color: 'var(--c-bill)', sub: b.day != null ? fmtMD(b.day) : 'set aside' }); });
-      if (s.spend > 0.004) kids.push({ name: 'Spending money', v: s.spend, color: 'var(--c-spend)', sub: 'until ' + fmtMD(s.nextPayday - 1) });
-      var yk = kohoNode.y - 6;
-      kids.forEach(function (n) { n.h = Math.max(2.5, n.v * scale); n.slot = Math.max(n.h, 36); n.y = yk; yk += n.slot + 8; });
+    var cols, links = [];
+    if (s.custom) {
+      var src = (s.sources || []).filter(function (x) { return x.amount > 0; }).map(function (x, i) { return { id: 'src' + i, name: x.name, v: r2(x.amount), color: colorOf(x.account || 'other') }; });
+      var mid = { id: 'chq', name: 'BMO Chequing', v: totalOf(s), color: ACCT.chq.color };
+      var dst = groupsOf(s).map(function (gr) { return { id: 'g-' + gr.key, name: gr.name, v: gr.amount, color: gr.color, sub: gr.sub }; });
+      cols = [src, [mid], dst];
+      src.forEach(function (n) { links.push({ from: n.id, to: 'chq', v: n.v, color: n.color }); });
+      dst.forEach(function (n) { links.push({ from: 'chq', to: n.id, v: n.v, color: n.color }); });
+    } else {
+      var chq = { id: 'chq', name: label || 'BMO Chequing', v: r2(s.amount), color: ACCT.chq.color };
+      var acc = groupsOf(s).map(function (gr) { return { id: gr.key, name: gr.name, v: gr.amount, color: gr.color }; });
+      var kids = [];
+      if (acc.some(function (n) { return n.id === 'koho'; })) {
+        (s.bills || []).forEach(function (b, i) { kids.push({ id: 'k' + i, name: b.name, v: b.amount, color: 'var(--c-bill)', sub: b.day != null ? fmtMD(b.day) : 'set aside' }); });
+        if (s.spend > 0.004) kids.push({ id: 'spend', name: 'Spending money', v: r2(s.spend), color: 'var(--c-spend)', sub: 'until ' + fmtMD(s.nextPayday - 1) });
+      }
+      cols = [[chq], acc, kids];
+      acc.forEach(function (n) { links.push({ from: 'chq', to: n.id, v: n.v, color: n.color }); });
+      kids.forEach(function (n) { links.push({ from: 'koho', to: n.id, v: n.v, color: n.color }); });
     }
-    var H = Math.ceil(Math.max(col1Bottom, kids.length ? kids[kids.length - 1].y + kids[kids.length - 1].slot : 0, y0 + h0) + 16);
-    function band(x1, y1a, y1b, x2, y2a, y2b, color, d) {
-      var mx = (x1 + x2) / 2;
-      return '<path class="lk" style="--d:' + d + 's" fill="' + color + '" fill-opacity="0.32" d="M' + x1 + ',' + y1a.toFixed(1) + ' C' + mx + ',' + y1a.toFixed(1) + ' ' + mx + ',' + y2a.toFixed(1) + ' ' + x2 + ',' + y2a.toFixed(1) + ' L' + x2 + ',' + y2b.toFixed(1) + ' C' + mx + ',' + y2b.toFixed(1) + ' ' + mx + ',' + y1b.toFixed(1) + ' ' + x1 + ',' + y1b.toFixed(1) + ' Z"></path>';
-    }
-    var g = '', sy = y0;
-    col1.forEach(function (n, i) { var hh = n.v * scale; g += band(c0 + nodeW, sy, sy + hh, c1, n.y, n.y + Math.max(hh, 0.1), ACCT[n.k].color, 0.1 + i * 0.12); sy += hh; });
-    if (kohoNode) { var ky = kohoNode.y; kids.forEach(function (n, i) { var hh = n.v * scale; g += band(c1 + nodeW, ky, ky + hh, c2, n.y, n.y + hh, n.color, 0.45 + i * 0.07); ky += hh; }); }
-    g += '<rect x="' + c0 + '" y="' + y0.toFixed(1) + '" width="' + nodeW + '" height="' + h0.toFixed(1) + '" rx="2" fill="var(--c-chq)"></rect>';
-    g += '<text x="' + (c0 - 10) + '" y="' + (y0 + h0 / 2 - 4).toFixed(1) + '" text-anchor="end">' + esc(label || 'BMO Chequing') + '</text><text class="amt" x="' + (c0 - 10) + '" y="' + (y0 + h0 / 2 + 13).toFixed(1) + '" text-anchor="end">' + esc(money.format(s.amount)) + '</text>';
-    col1.forEach(function (n) {
-      g += '<rect x="' + c1 + '" y="' + n.y.toFixed(1) + '" width="' + nodeW + '" height="' + n.h.toFixed(1) + '" rx="2" fill="' + ACCT[n.k].color + '"></rect>';
-      var cy = n.y + n.h / 2;
-      var tx = c1 - 10, nm = ACCT[n.k].name, w = Math.max(nm.length * 7.6, money.format(n.v).length * 8.3) + 18;
-      g += '<rect class="pill" x="' + (tx - w + 6).toFixed(1) + '" y="' + (cy - 20).toFixed(1) + '" width="' + w.toFixed(1) + '" height="40" rx="6"></rect>';
-      g += '<text x="' + tx + '" y="' + (cy - 3).toFixed(1) + '" text-anchor="end">' + esc(nm) + '</text><text class="amt" x="' + tx + '" y="' + (cy + 14).toFixed(1) + '" text-anchor="end">' + esc(money.format(n.v)) + '</text>';
-    });
-    kids.forEach(function (n) {
-      g += '<rect x="' + c2 + '" y="' + n.y.toFixed(1) + '" width="' + nodeW + '" height="' + n.h.toFixed(1) + '" rx="2" fill="' + n.color + '"></rect>';
-      var lx = c2 + nodeW + 10, ty = n.y + Math.max(0, (n.h - 32) / 2);
-      g += '<text x="' + lx + '" y="' + (ty + 12).toFixed(1) + '">' + esc(trunc(n.name, 26)) + '</text><text x="' + lx + '" y="' + (ty + 29).toFixed(1) + '"><tspan class="amt">' + esc(money.format(n.v)) + '</tspan><tspan class="mut" dx="6">' + esc(n.sub) + '</tspan></text>';
-    });
-    return '<svg class="flow" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="How ' + esc(money.format(s.amount)) + ' flows to your accounts and bills">' + g + '</svg>';
+    return sankeySvg(cols, links, 'How ' + money.format(totalOf(s)) + ' flows to your accounts and bills');
   }
   function splitBlock(s, label) {
+    var kv = s.custom
+      ? '<dt>From the cheque</dt><dd>' + esc(money.format(s.amount)) + '</dd>' + (s.fromBalance > 0 ? '<dt>Already in BMO</dt><dd>' + esc(money.format(s.fromBalance)) + '</dd>' : '') + '<dt>Total moved</dt><dd class="big2">' + esc(money.format(totalOf(s))) + '</dd><dt>Plan used</dt><dd>Your own split</dd>'
+      : '<dt>Bills due before ' + esc(fmtMD(s.nextPayday)) + '</dt><dd>' + esc(money.format(s.billTotal)) + '</dd><dt>Left to spend in KOHO</dt><dd class="big2" style="color:' + (s.spend < 0 ? 'var(--bad)' : 'inherit') + '">' + esc(money.format(s.spend)) + '</dd><dt>Plan used</dt><dd>' + esc(s.phase === 'steady' ? 'Card paid off' : 'Paying down card') + '</dd>';
     return '<div class="split-top"><div>' + donutSvg(s) + '</div><div style="display:grid;gap:12px">' + pctChips(s) +
-      '<div class="kv" style="max-width:420px"><dt>Bills due before ' + esc(fmtMD(s.nextPayday)) + '</dt><dd>' + esc(money.format(s.billTotal)) + '</dd><dt>Left to spend in KOHO</dt><dd class="big2" style="color:' + (s.spend < 0 ? 'var(--bad)' : 'inherit') + '">' + esc(money.format(s.spend)) + '</dd><dt>Plan used</dt><dd>' + esc(s.phase === 'steady' ? 'Card paid off' : 'Paying down card') + '</dd></div>' +
-      (s.notes && s.notes.length ? '<p class="small" style="color:var(--warn)">' + s.notes.map(esc).join(' ') + '</p>' : '') + '</div></div>' +
+      '<div class="kv" style="max-width:420px">' + kv + '</div>' +
+      (s.notes && s.notes.length ? '<p class="small" style="color:' + (s.custom ? 'var(--muted)' : 'var(--warn)') + '">' + s.notes.map(esc).join(' ') + '</p>' : '') + '</div></div>' +
       '<div class="flow-box"><p class="label" style="margin-bottom:6px">Where the money goes</p>' + flowSvg(s, label) + '<p class="swipe">Swipe sideways to see the whole flow.</p></div>';
   }
   function renderExpected() {
@@ -703,7 +757,7 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
     // BMO Chequing
     var en = expNet(nx), deps = confirmed().slice(-5).reverse();
     var chqBody = '<dl class="kv"><dt>Next deposit</dt><dd>' + esc(fmtWMD(dayNum(nx.payday))) + '</dd><dt>Expected so far</dt><dd>' + (en > 0 ? esc(money.format(en)) : '—') + '</dd>' +
-      (la ? '<dt>Last deposit</dt><dd>' + esc(money.format(la.actual.amount)) + ' · ' + esc(fmtMD(dayNum(la.payday))) + '</dd><dt>Stays in chequing</dt><dd>' + esc(money.format(0)) + '</dd>' : '') + '</dl>' +
+      (la ? '<dt>Last deposit</dt><dd>' + esc(money.format(la.actual.amount)) + ' · ' + esc(fmtMD(dayNum(la.payday))) + '</dd><dt>Stays in chequing</dt><dd>' + esc(money.format(Number(splitOf(la).kept) || 0)) + '</dd>' : '') + '</dl>' +
       (deps.length ? '<div><p class="label" style="margin-bottom:4px">Recent deposits</p><dl class="kv">' + deps.map(function (c) { return '<dt>' + esc(fmtWMD(dayNum(c.payday))) + '</dt><dd>' + esc(money.format(c.actual.amount)) + '</dd>'; }).join('') + '</dl></div>' : '') +
       '<p class="small muted">Everything that lands here gets split out, so chequing goes back to about $0 each payday.</p>';
     html += row('chq', 'BMO Chequing', ACCT.chq.role, en > 0 ? esc(money.format(en)) : '—', 'expected ' + fmtMD(dayNum(nx.payday)), chqBody);
@@ -759,7 +813,8 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
   function renderBills() {
     var el = $('#bills'), canEdit = canWrite(), mon = monthlyBills(), per = r2(mon * 12 / 26);
     var la = latestActual(), nx = nextCheque(), base = la && dayNum(la.payday) + (Number(state.settings.payEvery) || 14) > todayNum() ? la : nx;
-    var s = splitOf(base) || ENGINE.compute(state.settings, state.bills, 0, dayNum(base.payday));
+    var bd = dayNum(base.payday), win = ENGINE.billsInWindow(state.bills, 'koho', bd, bd + (Number(state.settings.payEvery) || 14) - 1);
+    var s = { bills: win, billTotal: r2(win.reduce(function (a, b) { return a + b.amount; }, 0)) };
     var dueIds = {}; s.bills.forEach(function (b) { dueIds[b.id] = b; });
     var html = '<div class="panel-head"><div><p class="label eyebrow">Paid from KOHO unless you say otherwise</p><h2 id="h-bills">Bills</h2></div>' + (canEdit ? '<button class="btn btn-quiet" type="button" data-action="bill-add">Add a bill</button>' : '') + '</div>';
     html += '<div class="totals"><span>Every month <b>' + esc(money.format(mon)) + '</b></span><span>Per cheque <b>' + esc(money.format(per)) + '</b></span><span>Due ' + esc(fmtMD(dayNum(base.payday))) + '–' + esc(fmtMD(dayNum(base.payday) + 13)) + ' <b>' + esc(money.format(s.billTotal)) + '</b></span></div>';
@@ -844,7 +899,7 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
     html += '<div class="meter" role="img" aria-label="' + Math.round(sv / goal * 100) + '% of your goal"><span style="width:' + Math.min(100, sv / goal * 100) + '%;background:var(--c-save)"></span>' + marks.map(function (m) { return '<span class="mark" style="left:' + (m.v / goal * 100) + '%" title="' + esc(m.t + ' ' + money.format(m.v)) + '"></span>'; }).join('') + '</div>';
     html += '<div class="meter-l"><span>$0</span>' + marks.map(function (m) { return '<span>' + esc(m.t) + '</span>'; }).join('') + '<span>' + esc(money0.format(goal)) + '</span></div>';
     html += shieldBars();
-    var la = latestActual(), per2 = la ? splitOf(la).savings : (expNet(nextCheque()) > 0 ? liveSplit(nextCheque(), expNet(nextCheque())).savings : 150);
+    var la = latestActual(), ls = la ? splitOf(la) : null, per2 = ls && !ls.custom ? ls.savings : (expNet(nextCheque()) > 0 ? liveSplit(nextCheque(), expNet(nextCheque())).savings : 150);
     var fc = shieldForecast(per2); if (fc) html += '<p class="small muted">' + esc(fc) + '</p>';
     if (canEdit) html += '<form class="grid2" data-form="shield"><label class="field"><span>Already in BMO Savings</span><input id="sf-start" name="start" type="number" step="0.01" min="0" inputmode="decimal" value="' + esc(Number(st.savingsStart) || '') + '" placeholder="0"></label><label class="field"><span>Goal</span><input id="sf-goal" name="goal" type="number" step="10" min="0" inputmode="decimal" value="' + esc(goal) + '"></label><div class="row" style="grid-column:1/-1"><button class="btn btn-quiet" type="submit">Save shield</button></div></form>';
     html += '</div>';
@@ -913,8 +968,9 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
     var html = '<div class="tbl-box"><table><thead><tr><th>Payday</th><th class="n">Expected</th><th class="n">Actual</th><th class="n">Card</th><th class="n">KOHO</th><th class="n">Savings</th><th>Moved</th></tr></thead><tbody>';
     list.forEach(function (c) {
       var has = c.actual && c.actual.amount != null, s = has ? splitOf(c) : null, mc = has ? movedCount(c) : null, en = expNet(c);
-      html += '<tr><td>' + esc(fmtWMD(dayNum(c.payday))) + '</td><td class="n">' + (en != null && en > 0 ? esc(money.format(en)) : '—') + '</td><td class="n">' + (has ? esc(money.format(c.actual.amount)) : '—') + '</td>' +
-        '<td class="n">' + (s ? esc(money.format(s.card)) : '—') + '</td><td class="n">' + (s ? esc(money.format(s.koho)) : '—') + '</td><td class="n">' + (s ? esc(money.format(s.savings)) : '—') + '</td>' +
+      var z = function (v) { return s && s.custom && !(v > 0) ? '—' : esc(money.format(v)); };
+      html += '<tr><td>' + esc(fmtWMD(dayNum(c.payday))) + (s && s.custom ? ' ' + chip('Own split', 'c-info') : '') + '</td><td class="n">' + (en != null && en > 0 ? esc(money.format(en)) : '—') + '</td><td class="n">' + (has ? esc(money.format(c.actual.amount)) : '—') + '</td>' +
+        '<td class="n">' + (s ? z(s.card) : '—') + '</td><td class="n">' + (s ? z(s.koho) : '—') + '</td><td class="n">' + (s ? z(s.savings) : '—') + '</td>' +
         '<td>' + (has ? (mc.n === mc.tot ? chip('All', 'c-good') : chip(mc.n + ' of ' + mc.tot, 'c-warn')) : chip(dayNum(c.payday) >= todayNum() ? 'Upcoming' : 'Not confirmed', 'c-muted')) + '</td></tr>';
     });
     el.innerHTML = html + '</tbody></table></div>';
