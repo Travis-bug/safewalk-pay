@@ -1,0 +1,1222 @@
+<title>Cheque Day</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: a pay-advice slip up top (amount deposited on security-paper guilloche, perforated edge), then one column of working panels: move the money, expected split, actual split, accounts, bills, planner, goals, ask Claude, history. */
+:root {
+  --paper: #EBF2EC; --surface: #FFFFFF; --surface-2: #F3F8F4; --ink: #0F2119; --muted: #55685D; --line: #D3DFD6;
+  --accent: #0F4C6E; --on-accent: #FFFFFF; --focus: #1D6FA3;
+  --c-chq: #0F4C6E; --c-card: #2F55D4; --c-koho: #7646D6; --c-save: #12855A; --c-bill: #B86E12; --c-spend: #A27BE8;
+  --good: #11744C; --good-bg: #DCF1E5; --warn: #9A4A09; --warn-bg: #FBEBD9; --bad: #B42318; --bad-bg: #FCE6E3; --info-bg: #E2EEF5;
+  --guilloche: rgba(15, 76, 110, 0.10);
+  --f-display: "Bricolage Grotesque", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-body: "Public Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0A1410; --surface: #111D18; --surface-2: #17261F; --ink: #E3EEE7; --muted: #94A89C; --line: #24362D;
+    --accent: #86C9EC; --on-accent: #06131B; --focus: #9FD6F2;
+    --c-chq: #86C9EC; --c-card: #8AA4FF; --c-koho: #B795FF; --c-save: #55D49C; --c-bill: #F0B25E; --c-spend: #D3BCFF;
+    --good: #61D6A0; --good-bg: #123024; --warn: #F5AE6B; --warn-bg: #3A2513; --bad: #FF8E83; --bad-bg: #3D1714; --info-bg: #13283A;
+    --guilloche: rgba(134, 201, 236, 0.09);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0A1410; --surface: #111D18; --surface-2: #17261F; --ink: #E3EEE7; --muted: #94A89C; --line: #24362D;
+  --accent: #86C9EC; --on-accent: #06131B; --focus: #9FD6F2;
+  --c-chq: #86C9EC; --c-card: #8AA4FF; --c-koho: #B795FF; --c-save: #55D49C; --c-bill: #F0B25E; --c-spend: #D3BCFF;
+  --good: #61D6A0; --good-bg: #123024; --warn: #F5AE6B; --warn-bg: #3A2513; --bad: #FF8E83; --bad-bg: #3D1714; --info-bg: #13283A;
+  --guilloche: rgba(134, 201, 236, 0.09);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--paper); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+main.wrap { display: grid; gap: 22px; padding-block: 18px 48px; }
+h1, h2, h3 { margin: 0; text-wrap: balance; }
+h2 { font-family: var(--f-display); font-weight: 700; font-size: clamp(22px, 4.2vw, 28px); letter-spacing: -0.01em; line-height: 1.1; }
+h3 { font-family: var(--f-display); font-weight: 700; font-size: 18px; line-height: 1.2; }
+p { margin: 0; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+.num, .mono { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.label { font-family: var(--f-mono); font-size: 11.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.muted { color: var(--muted); }
+.small { font-size: 13.5px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Pay advice slip */
+.slip-wrap { padding-block: 18px 0; }
+.slip { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 14px 14px 4px 4px; overflow: hidden; }
+.slip canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.slip-body { position: relative; display: grid; gap: 16px; padding: 18px 20px 26px; }
+.slip-top { display: flex; flex-wrap: wrap; gap: 6px 18px; justify-content: space-between; align-items: baseline; }
+.brand { font-family: var(--f-display); font-weight: 800; font-size: 20px; letter-spacing: -0.01em; }
+.brand span { color: var(--c-save); }
+.slip-fields { display: flex; flex-wrap: wrap; gap: 4px 18px; }
+.slip-fields .f { display: grid; gap: 1px; }
+.slip-fields .f b { font-family: var(--f-mono); font-weight: 500; font-size: 13.5px; }
+.deposit { display: grid; gap: 4px; }
+.deposit .label { color: var(--accent); }
+.big { font-family: var(--f-display); font-weight: 800; font-size: clamp(52px, 13vw, 96px); line-height: 0.95; letter-spacing: -0.035em; font-variant-numeric: tabular-nums; }
+.big .c { font-size: 0.45em; letter-spacing: -0.01em; vertical-align: 0.95em; margin-left: 2px; }
+.deposit .sub { font-size: 14px; color: var(--muted); }
+.heads { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.head { background: var(--surface); padding: 12px 14px; display: grid; gap: 3px; align-content: start; min-width: 0; }
+.head .v { font-family: var(--f-mono); font-weight: 600; font-size: 20px; font-variant-numeric: tabular-nums; line-height: 1.15; overflow-wrap: anywhere; }
+.head .s { font-size: 12.5px; color: var(--muted); }
+.head .v.good { color: var(--good); } .head .v.warn { color: var(--warn); } .head .v.bad { color: var(--bad); }
+@media (max-width: 760px) { .heads { grid-template-columns: repeat(2, minmax(0, 1fr)); } .head .v { font-size: 17px; } }
+.perf { height: 10px; background: radial-gradient(circle at 8px 10px, var(--paper) 4.5px, transparent 5px) repeat-x; background-size: 16px 10px; position: absolute; left: 0; right: 0; bottom: -1px; }
+
+/* Section nav */
+.jump { display: flex; gap: 6px; overflow-x: auto; padding-block: 2px 4px; scrollbar-width: none; }
+.jump::-webkit-scrollbar { display: none; }
+.jump button { flex: none; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font-size: 13.5px; font-weight: 600; cursor: pointer; color: var(--ink); }
+.jump button:hover { border-color: var(--accent); }
+
+/* Panels */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; display: grid; gap: 14px; min-width: 0; }
+@media (max-width: 560px) { .panel { padding: 15px 14px; } }
+.panel-head { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: flex-end; justify-content: space-between; }
+.panel-head .eyebrow { margin-bottom: 4px; }
+.hint { font-size: 13.5px; color: var(--muted); max-width: 68ch; }
+.cols { display: grid; gap: 22px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 900px) { .cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; } }
+
+/* Buttons and fields */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 8px 16px; border-radius: 8px; border: 1px solid transparent; font-weight: 600; font-size: 14.5px; cursor: pointer; line-height: 1.2; }
+.btn-primary { background: var(--accent); color: var(--on-accent); }
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-quiet { background: transparent; border-color: var(--line); color: var(--ink); }
+.btn-quiet:hover { background: var(--surface-2); }
+.btn[disabled] { opacity: 0.55; cursor: not-allowed; }
+.link { background: none; border: 0; padding: 2px 0; color: var(--accent); font-weight: 600; font-size: 13.5px; cursor: pointer; text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px; }
+.link:hover { text-decoration-color: currentColor; }
+.link.danger { color: var(--bad); }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field > span { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.field input, .field select, .field textarea { width: 100%; min-height: 40px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }
+.field input:focus, .field select:focus, .field textarea:focus { outline: 2px solid var(--focus); outline-offset: 0; }
+.field small { font-size: 12px; color: var(--muted); }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 560px) { .grid3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.money-in { position: relative; }
+.money-in input { padding-left: 24px; font-family: var(--f-mono); font-size: 18px; }
+.money-in::before { content: "$"; position: absolute; left: 10px; bottom: 9px; font-family: var(--f-mono); font-size: 18px; color: var(--muted); }
+
+/* Chips */
+.chip { display: inline-flex; align-items: center; gap: 5px; font-family: var(--f-mono); font-size: 11.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; white-space: nowrap; line-height: 1.3; }
+.c-good { background: var(--good-bg); color: var(--good); }
+.c-warn { background: var(--warn-bg); color: var(--warn); }
+.c-bad { background: var(--bad-bg); color: var(--bad); }
+.c-info { background: var(--info-bg); color: var(--accent); }
+.c-muted { background: var(--surface-2); color: var(--muted); border: 1px solid var(--line); }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; flex: none; }
+
+/* Banners */
+#banners { display: grid; gap: 10px; }
+.banner { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; background: var(--info-bg); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font-size: 14px; }
+.banner.warn { background: var(--warn-bg); }
+.banner p { max-width: 78ch; }
+
+/* Move the money */
+.todo { display: grid; gap: 0; }
+.move { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); }
+.move:first-child { border-top: 0; }
+.move .bar { width: 6px; align-self: stretch; border-radius: 3px; }
+.move .what { display: grid; gap: 2px; min-width: 0; }
+.move .what b { font-weight: 600; }
+.move .amt { font-family: var(--f-mono); font-weight: 600; font-size: 18px; text-align: right; font-variant-numeric: tabular-nums; }
+.move .acts { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+.move.done .amt { color: var(--muted); text-decoration: line-through; }
+.tick { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface-2); border-radius: 999px; padding: 4px 12px 4px 6px; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+.tick i { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--muted); display: inline-grid; place-items: center; font-style: normal; font-size: 12px; line-height: 1; }
+.tick[aria-pressed="true"] { border-color: var(--good); color: var(--good); background: var(--good-bg); }
+.tick[aria-pressed="true"] i { border-color: var(--good); background: var(--good); color: var(--surface); }
+.confirm-box { display: grid; gap: 12px; padding: 14px; border: 1px dashed var(--accent); border-radius: 10px; background: var(--surface-2); }
+
+/* Split sections */
+.split { display: grid; gap: 18px; }
+.split-top { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr); align-items: center; }
+@media (min-width: 760px) { .split-top { grid-template-columns: 260px minmax(0, 1fr); } }
+.pcts { display: flex; flex-wrap: wrap; gap: 8px; }
+.pct { display: grid; gap: 0; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; min-width: 118px; background: var(--surface-2); }
+.pct .p { font-family: var(--f-display); font-weight: 800; font-size: 28px; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.pct .n { font-size: 12.5px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+.donut { width: 100%; max-width: 240px; height: auto; display: block; margin: 0 auto; }
+.donut text { font-family: var(--f-mono); fill: var(--ink); }
+.donut .sub { fill: var(--muted); font-size: 6.5px; letter-spacing: 0.06em; }
+.donut circle.seg { fill: none; stroke-width: 22; transform: rotate(-90deg); transform-origin: 60px 60px; }
+.donut circle.track { fill: none; stroke: var(--surface-2); stroke-width: 22; }
+@keyframes grow { from { stroke-dasharray: 0 400; } }
+@keyframes fadeflow { from { opacity: 0.08; } }
+.sweep .donut circle.seg { animation: grow 0.9s cubic-bezier(.2,.7,.2,1) both; animation-delay: var(--d, 0s); }
+.sweep .flow path.lk { animation: fadeflow 1s ease both; animation-delay: var(--d, 0s); }
+.sweep .pct { animation: fadeflow 0.6s ease both; animation-delay: var(--d, 0s); }
+@media (prefers-reduced-motion: reduce) { .sweep .donut circle.seg, .sweep .flow path.lk, .sweep .pct { animation: none; } }
+.panel > *, .split-top > *, .cols > *, .split > * { min-width: 0; }
+.flow-box { overflow-x: auto; border-top: 1px solid var(--line); padding-top: 12px; }
+.flow { display: block; width: 100%; min-width: 600px; height: auto; }
+.flow text { font-family: var(--f-body); font-size: 13px; fill: var(--ink); }
+.flow text.amt { font-family: var(--f-mono); font-weight: 600; font-size: 13.5px; }
+.flow text.mut { fill: var(--muted); font-size: 11.5px; }
+.flow rect.pill { fill: var(--surface); opacity: 0.92; }
+.swipe { font-size: 12px; color: var(--muted); }
+@media (min-width: 640px) { .swipe { display: none; } }
+.diff { display: inline-flex; gap: 6px; align-items: center; font-family: var(--f-mono); font-size: 13px; }
+.picker { display: flex; flex-wrap: wrap; gap: 6px; }
+.picker button { border: 1px solid var(--line); background: var(--surface-2); border-radius: 999px; padding: 4px 11px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: var(--f-mono); }
+.picker button[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.empty { padding: 18px; border: 1px dashed var(--line); border-radius: 10px; color: var(--muted); font-size: 14px; }
+
+/* Accounts */
+.accts { display: grid; gap: 10px; }
+.acct { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); overflow: hidden; }
+.acct-btn { width: 100%; display: grid; grid-template-columns: 8px minmax(0, 1fr) auto 18px; gap: 4px 14px; align-items: center; padding: 14px 14px 14px 0; background: none; border: 0; text-align: left; cursor: pointer; }
+.acct-btn .stripe { align-self: stretch; border-radius: 0 3px 3px 0; }
+.acct-btn .nm { display: grid; gap: 1px; min-width: 0; }
+.acct-btn .nm b { font-family: var(--f-display); font-weight: 700; font-size: 17px; }
+.acct-btn .nm span { font-size: 13px; color: var(--muted); }
+.acct-btn .nx { text-align: right; display: grid; gap: 1px; }
+.acct-btn .nx b { font-family: var(--f-mono); font-weight: 600; font-size: 16px; }
+.acct-btn .nx span { font-size: 12.5px; color: var(--muted); }
+.acct-btn .chev { transition: transform .2s ease; color: var(--muted); font-size: 14px; }
+.acct-btn[aria-expanded="true"] .chev { transform: rotate(90deg); }
+.acct-body { padding: 0 14px 16px 22px; display: grid; gap: 12px; }
+.kv { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 14px; font-size: 14px; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; text-align: right; font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.kv dd.big2 { font-weight: 600; }
+@media (max-width: 420px) { .acct-btn .nx b { font-size: 14.5px; } }
+
+/* Bills */
+.bills { display: grid; }
+.bill { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 14px; padding: 11px 0; border-top: 1px solid var(--line); align-items: center; }
+.bill:first-child { border-top: 0; }
+.bill .bn { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; font-weight: 600; min-width: 0; }
+.bill .bm { font-size: 13px; color: var(--muted); grid-column: 1; }
+.bill .ba { font-family: var(--f-mono); font-weight: 600; text-align: right; grid-row: 1 / span 2; grid-column: 2; display: grid; justify-items: end; gap: 2px; }
+.bill .ba .link { font-family: var(--f-body); }
+.bill.off .bn, .bill.off .ba > span { color: var(--muted); text-decoration: line-through; }
+.bill-form { grid-column: 1 / -1; display: grid; gap: 10px; padding: 12px; margin-top: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
+.group-h { padding: 14px 0 4px; }
+.totals { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 14px; }
+.totals b { font-family: var(--f-mono); }
+
+/* Planner */
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; flex-wrap: wrap; }
+.seg button { background: transparent; border: 0; padding: 7px 12px; font-size: 13.5px; font-weight: 600; cursor: pointer; color: var(--muted); }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.slider { display: grid; gap: 4px; }
+.slider .top { display: flex; justify-content: space-between; gap: 10px; font-size: 13.5px; }
+.slider .top b { font-family: var(--f-mono); }
+.slider input[type=range] { width: 100%; accent-color: var(--accent); }
+.stack { display: flex; height: 22px; border-radius: 6px; overflow: hidden; background: var(--surface-2); }
+.stack span { display: block; height: 100%; transition: width .25s ease; }
+.res { display: grid; gap: 8px; }
+.res-row { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: 14px; }
+.res-row b { font-family: var(--f-mono); }
+
+/* Goals */
+.meter { position: relative; height: 14px; background: var(--surface-2); border-radius: 7px; overflow: visible; border: 1px solid var(--line); }
+.meter > span { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 7px; }
+.meter .mark { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ink); opacity: 0.6; }
+.meter-l { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--muted); font-family: var(--f-mono); }
+.stat2 { display: grid; gap: 2px; }
+.stat2 .v { font-family: var(--f-display); font-weight: 800; font-size: 34px; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.bars { display: block; width: 100%; height: auto; }
+.bars text { font-family: var(--f-mono); font-size: 10px; fill: var(--muted); }
+.bars .gl { stroke: var(--line); }
+
+/* Ask */
+.asks { display: flex; flex-wrap: wrap; gap: 6px; }
+.asks button { border: 1px solid var(--line); background: var(--surface-2); border-radius: 999px; padding: 6px 12px; font-size: 13.5px; cursor: pointer; }
+.asks button:hover { border-color: var(--accent); }
+.answer { white-space: pre-wrap; font-size: 15px; line-height: 1.55; padding: 14px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--line); max-width: 75ch; }
+
+/* History */
+.tbl-box { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 14px; }
+th { text-align: left; font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 600; padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line); }
+td { padding: 10px 10px 10px 0; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+td.n, th.n { text-align: right; font-family: var(--f-mono); }
+
+footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; display: grid; gap: 6px; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--surface); padding: 10px 16px; border-radius: 8px; font-size: 14px; z-index: 40; max-width: calc(100% - 32px); }
+.toast.bad { background: var(--bad); color: #fff; }
+</style>
+
+<div class="wrap slip-wrap">
+  <section class="slip" aria-labelledby="dep-label">
+    <canvas id="guilloche" aria-hidden="true"></canvas>
+    <div class="slip-body">
+      <div class="slip-top">
+        <div class="brand">Cheque<span>Day</span></div>
+        <div class="slip-fields" id="slip-fields">
+          <div class="f"><span class="label">Pay date</span><b>—</b></div>
+          <div class="f"><span class="label">Into</span><b>BMO Chequing</b></div>
+        </div>
+      </div>
+      <div class="deposit">
+        <span class="label" id="dep-label">Amount deposited</span>
+        <div class="big" id="dep-amount">$0<span class="c">.00</span></div>
+        <p class="sub" id="dep-sub">Loading your cheques…</p>
+      </div>
+      <div class="heads" id="heads">
+        <div class="head"><span class="label">Next cheque</span><span class="v">—</span><span class="s">&nbsp;</span></div>
+        <div class="head"><span class="label">Money moved</span><span class="v">—</span><span class="s">&nbsp;</span></div>
+        <div class="head"><span class="label">Left to spend</span><span class="v">—</span><span class="s">&nbsp;</span></div>
+        <div class="head"><span class="label">Savings shield</span><span class="v">—</span><span class="s">&nbsp;</span></div>
+      </div>
+    </div>
+    <div class="perf" aria-hidden="true"></div>
+  </section>
+</div>
+
+<main class="wrap">
+  <nav class="jump" aria-label="Sections">
+    <button type="button" data-jump="todo">Move money</button>
+    <button type="button" data-jump="expected">Expected split</button>
+    <button type="button" data-jump="actual">Actual split</button>
+    <button type="button" data-jump="accounts">Accounts</button>
+    <button type="button" data-jump="bills">Bills</button>
+    <button type="button" data-jump="planner">Planner</button>
+    <button type="button" data-jump="goals">Goals</button>
+    <button type="button" data-jump="ask" id="jump-ask">Ask Claude</button>
+    <button type="button" data-jump="history">History</button>
+  </nav>
+  <div id="banners"></div>
+
+  <section class="panel" id="todo" aria-labelledby="h-todo"></section>
+
+  <section class="panel split" id="expected" aria-labelledby="h-expected"></section>
+  <section class="panel split" id="actual" aria-labelledby="h-actual"></section>
+
+  <section class="panel" id="accounts" aria-labelledby="h-accounts">
+    <div class="panel-head"><div><p class="label eyebrow">Where your money lives</p><h2 id="h-accounts">Accounts</h2></div></div>
+    <div class="accts" id="acct-list"></div>
+  </section>
+
+  <section class="panel" id="bills" aria-labelledby="h-bills"></section>
+
+  <section class="panel" id="planner" aria-labelledby="h-planner">
+    <div class="panel-head"><div><p class="label eyebrow">Try it before payday</p><h2 id="h-planner">Split planner</h2></div>
+      <div class="seg" role="group" aria-label="Plan">
+        <button type="button" data-action="plan-phase" data-v="paydown" id="pp-paydown">Paying down card</button>
+        <button type="button" data-action="plan-phase" data-v="steady" id="pp-steady">Card paid off</button>
+      </div>
+    </div>
+    <p class="hint" id="plan-hint"></p>
+    <div class="cols">
+      <div style="display:grid;gap:14px">
+        <div class="slider"><div class="top"><label for="pl-amount">Cheque amount</label><b id="pl-amount-v"></b></div><input type="range" id="pl-amount" min="200" max="1600" step="5"></div>
+        <div class="slider" id="pl-card-wrap"><div class="top"><label for="pl-card" id="pl-card-l">To RBC ION Visa</label><b id="pl-card-v"></b></div><input type="range" id="pl-card"></div>
+        <div class="slider"><div class="top"><label for="pl-save" id="pl-save-l">To BMO Savings</label><b id="pl-save-v"></b></div><input type="range" id="pl-save"></div>
+        <div class="row"><button class="btn btn-primary" type="button" data-action="plan-save" id="pl-save-btn">Use these as my rules</button><button class="link" type="button" data-action="plan-reset">Reset to my rules</button></div>
+      </div>
+      <div class="res" id="pl-res" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="goals" aria-labelledby="h-goals">
+    <div class="panel-head"><div><p class="label eyebrow">Take a hit, grow back bigger</p><h2 id="h-goals">Goals</h2></div></div>
+    <div class="cols" id="goal-cols"></div>
+  </section>
+
+  <section class="panel" id="ask" aria-labelledby="h-ask">
+    <div class="panel-head"><div><p class="label eyebrow">Uses your numbers on this page</p><h2 id="h-ask">Ask Claude</h2></div></div>
+    <div id="ask-body"></div>
+  </section>
+
+  <section class="panel" id="history" aria-labelledby="h-history">
+    <div class="panel-head"><div><p class="label eyebrow">Every cheque</p><h2 id="h-history">History</h2></div></div>
+    <div id="hist-body"></div>
+  </section>
+</main>
+<footer class="wrap" id="foot"></footer>
+<div id="toast-slot"></div>
+<!--SNAPSHOT-->
+<script>
+(function () {
+  'use strict';
+  /* ---------- basics ---------- */
+  var money = new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' });
+  var money0 = new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 });
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var DOWS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  function $(s) { return document.querySelector(s); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function r2(x) { return Math.round((Number(x) || 0) * 100) / 100; }
+  function dayNum(iso) { var p = String(iso).split('-').map(Number); return Math.round(Date.UTC(p[0], p[1] - 1, p[2]) / 864e5); }
+  function isoOf(n) { return new Date(n * 864e5).toISOString().slice(0, 10); }
+  function parts(n) { var d = new Date(n * 864e5); return { y: d.getUTCFullYear(), m: d.getUTCMonth(), d: d.getUTCDate(), w: d.getUTCDay() }; }
+  function todayNum() { var t = new Date(); return Math.round(Date.UTC(t.getFullYear(), t.getMonth(), t.getDate()) / 864e5); }
+  function fmtMD(n) { var p = parts(n); return MONTHS[p.m] + ' ' + p.d; }
+  function fmtWMD(n) { var p = parts(n); return DOWS[p.w] + ', ' + MONTHS[p.m] + ' ' + p.d; }
+  function fmtLong(n) { var p = parts(n); return MONTHS[p.m] + ' ' + p.d + ', ' + p.y; }
+  function relDays(n) { var d = n - todayNum(); if (d === 0) return 'today'; if (d === 1) return 'tomorrow'; if (d === -1) return 'yesterday'; return d > 1 ? 'in ' + d + ' days' : (-d) + ' days ago'; }
+  function ord(d) { var s = ['th','st','nd','rd'], v = d % 100; return d + (s[(v - 20) % 10] || s[v] || s[0]); }
+  function fmtStamp(iso) { var d = new Date(iso); if (isNaN(d)) return ''; var h = d.getHours(), ap = h >= 12 ? 'PM' : 'AM'; return MONTHS[d.getMonth()] + ' ' + d.getDate() + ', ' + (h % 12 || 12) + ':' + String(d.getMinutes()).padStart(2, '0') + ' ' + ap; }
+  function bigMoney(v) { var s = money.format(v || 0), i = s.lastIndexOf('.'); return i < 0 ? esc(s) : esc(s.slice(0, i)) + '<span class="c">' + esc(s.slice(i)) + '</span>'; }
+  function daysInMonth(y, m) { return new Date(Date.UTC(y, m + 1, 0)).getUTCDate(); }
+  function deepMerge(a, b) { var o = Object.assign({}, a || {}); Object.keys(b || {}).forEach(function (k) { var v = b[k]; if (v && typeof v === 'object' && !Array.isArray(v) && o[k] && typeof o[k] === 'object' && !Array.isArray(o[k])) o[k] = deepMerge(o[k], v); else o[k] = v; }); return o; }
+  function rid() { return 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+  var ACCT = {
+    chq: { name: 'BMO Chequing', short: 'BMO Chequing', color: 'var(--c-chq)', role: 'Your pay lands here' },
+    card: { name: 'RBC ION Visa', short: 'RBC ION Visa', color: 'var(--c-card)', role: 'Paying down the card' },
+    koho: { name: 'KOHO', short: 'KOHO', color: 'var(--c-koho)', role: 'Bills and spending' },
+    savings: { name: 'BMO Savings', short: 'BMO Savings', color: 'var(--c-save)', role: 'Your savings shield' }
+  };
+  var HOW = {
+    card: 'In the BMO app: Pay bills → RBC Visa. Can take 1–3 business days to land.',
+    koho: 'Interac e-Transfer to your KOHO account, or KOHO as a bill payee in BMO.',
+    savings: 'BMO app: Transfer between your own accounts. Lands right away.'
+  };
+  var DEFAULTS = {
+    phase: 'paydown',
+    rules: { paydown: { cardPct: 50, savingsFixed: 150 }, steady: { cardMonthly: 250, savingsPct: 40 } },
+    card: { limit: null, balance: null, asOf: '' },
+    savingsStart: 0, savingsAsOf: '', shieldGoal: 1000,
+    payAnchor: '2026-11-20', payEvery: 14,
+    lastSync: '', lastSyncNote: ''
+  };
+
+  var state = {
+    mode: 'loading', loaded: false, settings: deepMerge(DEFAULTS, {}), cheques: [], bills: [], site: null, sitePending: 0,
+    open: {}, showKohoBills: false, editBill: null, confirmDel: null, confirmFor: null, draftAmt: '', actualPick: null,
+    plan: null, ask: { busy: false, text: '', q: '', err: '' }, animated: {}, builtAt: ''
+  };
+  var refs = null, sampleFn = null;
+
+  /* ==========================================================================
+     ENGINE (pure): paydays, bills in a cheque window, and the split rules
+     ========================================================================== */
+  var ENGINE = (function () {
+    function paydayAfter(st, n) { var a = dayNum(st.payAnchor || DEFAULTS.payAnchor), e = Number(st.payEvery) || 14; var k = Math.ceil((n - a) / e); return a + k * e; }
+    function isFirstOfMonth(payday, every) { var p = parts(payday), q = parts(payday - (every || 14)); return p.m !== q.m || p.y !== q.y; }
+    function billMonthly(b) { if (!b || b.status === 'cancelled' || b.amount == null || b.amount === '') return 0; return r2(Number(b.amount) * (1 + (Number(b.taxPct) || 0) / 100)); }
+    function billsInWindow(bills, from, start, end) {
+      var out = [];
+      bills.forEach(function (b) {
+        if ((b.from || 'koho') !== from) return;
+        var amt = billMonthly(b); if (!amt) return;
+        var d = Number(b.day);
+        if (d >= 1 && d <= 31) {
+          for (var n = start; n <= end; n++) { var p = parts(n), dd = Math.min(d, daysInMonth(p.y, p.m)); if (p.d === dd) out.push({ id: b.id, name: b.name, amount: amt, day: n, spread: false }); }
+        } else {
+          out.push({ id: b.id, name: b.name, amount: r2(amt * 12 / 26), day: null, spread: true });
+        }
+      });
+      out.sort(function (x, y) { return (x.day == null ? 1e9 : x.day) - (y.day == null ? 1e9 : y.day); });
+      return out;
+    }
+    function compute(st, bills, amount, payday, override) {
+      amount = r2(Math.max(0, Number(amount) || 0));
+      var every = Number(st.payEvery) || 14, phase = (override && override.phase) || st.phase || 'paydown';
+      var rules = deepMerge(DEFAULTS.rules, st.rules || {}); if (override && override.rules) rules = deepMerge(rules, override.rules);
+      var start = payday, end = payday + every - 1, notes = [];
+      var kohoBills = billsInWindow(bills, 'koho', start, end), cardBills = billsInWindow(bills, 'card', start, end);
+      var billTotal = r2(kohoBills.reduce(function (a, b) { return a + b.amount; }, 0));
+      var cardBillTotal = r2(cardBills.reduce(function (a, b) { return a + b.amount; }, 0));
+      var card = 0, savings = 0, koho = 0;
+      if (phase === 'steady') {
+        var first = isFirstOfMonth(payday, every);
+        card = first ? Math.min(r2(rules.steady.cardMonthly), amount) : 0;
+        if (!first) notes.push('Your card gets its monthly payment from the first cheque of the month, so this one skips it.');
+        var rest = r2(amount - card);
+        savings = r2(rest * (Number(rules.steady.savingsPct) || 0) / 100);
+        koho = r2(rest - savings);
+      } else {
+        card = r2(amount * (Number(rules.paydown.cardPct) || 0) / 100);
+        var bal = st.card && st.card.balance != null && st.card.balance !== '' ? Number(st.card.balance) : null, extra = 0;
+        if (bal != null && !isNaN(bal)) {
+          var cap = r2(Math.max(0, bal) + cardBillTotal);
+          if (card > cap) { extra = r2(card - cap); card = cap; notes.push('Your card only needs ' + money.format(cap) + ', so the extra ' + money.format(extra) + ' goes to savings.'); }
+        }
+        savings = r2(Math.min(Number(rules.paydown.savingsFixed) || 0, Math.max(0, amount - card)) + extra);
+        koho = r2(amount - card - savings);
+      }
+      // Bills come first: if KOHO's share can't cover the bills due before the next cheque, take the gap from savings, then the card.
+      var gap = r2(billTotal - koho);
+      if (gap > 0.004) {
+        var fromSave = Math.min(gap, savings); savings = r2(savings - fromSave); koho = r2(koho + fromSave); gap = r2(gap - fromSave);
+        var fromCard = Math.min(gap, card); card = r2(card - fromCard); koho = r2(koho + fromCard); gap = r2(gap - fromCard);
+        notes.push('KOHO got ' + money.format(fromSave + fromCard) + ' more so your bills are covered' + (fromSave ? ' (taken from savings' + (fromCard ? ' and the card' : '') + ')' : ' (taken from the card)') + '.');
+        if (gap > 0.004) notes.push('This cheque is ' + money.format(gap) + ' short of your bills before the next one.');
+      }
+      koho = r2(amount - card - savings);
+      var spend = r2(koho - billTotal);
+      return { amount: amount, payday: payday, nextPayday: payday + every, phase: phase, card: card, savings: savings, koho: koho,
+        bills: kohoBills, billTotal: billTotal, cardBills: cardBills, cardBillTotal: cardBillTotal, spend: spend, notes: notes,
+        rules: phase === 'steady' ? { cardMonthly: rules.steady.cardMonthly, savingsPct: rules.steady.savingsPct } : { cardPct: rules.paydown.cardPct, savingsFixed: rules.paydown.savingsFixed } };
+    }
+    return { paydayAfter: paydayAfter, isFirstOfMonth: isFirstOfMonth, billMonthly: billMonthly, billsInWindow: billsInWindow, compute: compute };
+  })();
+  /* ========================================================================== */
+
+  /* ---------- derived ---------- */
+  function sortedCheques() { return state.cheques.slice().sort(function (a, b) { return a.payday < b.payday ? -1 : a.payday > b.payday ? 1 : 0; }); }
+  function confirmed() { return sortedCheques().filter(function (c) { return c.actual && c.actual.amount != null; }); }
+  function latestActual() { var c = confirmed(); return c.length ? c[c.length - 1] : null; }
+  function nextCheque() {
+    var t = todayNum();
+    var up = sortedCheques().filter(function (c) { return !(c.actual && c.actual.amount != null) && dayNum(c.payday) >= t - 3; });
+    if (up.length) return up[0];
+    var pd = ENGINE.paydayAfter(state.settings, t);
+    var conf = latestActual(); if (conf && dayNum(conf.payday) >= pd) pd = dayNum(conf.payday) + (Number(state.settings.payEvery) || 14);
+    return { payday: isoOf(pd), synthetic: true };
+  }
+  function expNet(c) { return c && c.expected && c.expected.net != null ? Number(c.expected.net) : null; }
+  function splitOf(c) { if (!c) return null; if (c.split && c.split.amount != null) return c.split; var amt = c.actual ? c.actual.amount : expNet(c); return amt == null ? null : ENGINE.compute(state.settings, state.bills, amt, dayNum(c.payday)); }
+  function liveSplit(c, amt) { return ENGINE.compute(state.settings, state.bills, amt, dayNum(c.payday)); }
+  function movedCount(c) { var m = c.moved || {}, s = splitOf(c), n = 0, tot = 0; ['card', 'koho', 'savings'].forEach(function (k) { if (s && s[k] > 0) { tot++; if (m[k]) n++; } }); return { n: n, tot: tot }; }
+  function savingsTotal() {
+    var st = state.settings, t = Number(st.savingsStart) || 0;
+    confirmed().forEach(function (c) { if (c.moved && c.moved.savings && c.split) t += Number(c.split.savings) || 0; });
+    return r2(t);
+  }
+  function cardPaidSince() {
+    var st = state.settings, from = st.card && st.card.asOf ? st.card.asOf : '', t = 0;
+    confirmed().forEach(function (c) { if (c.moved && c.moved.card && c.split && (!from || String(c.moved.card).slice(0, 10) >= from)) t += Number(c.split.card) || 0; });
+    return r2(t);
+  }
+  function monthlyBills() { return r2(state.bills.reduce(function (a, b) { return a + ENGINE.billMonthly(b); }, 0)); }
+
+  /* ---------- small renderers ---------- */
+  function chip(t, cls) { return '<span class="chip ' + cls + '">' + esc(t) + '</span>'; }
+  function dot(color) { return '<span class="dot" style="background:' + color + '"></span>'; }
+  function head(label, v, s, cls) { return '<div class="head"><span class="label">' + esc(label) + '</span><span class="v' + (cls ? ' ' + cls : '') + '">' + v + '</span><span class="s">' + (s || '&nbsp;') + '</span></div>'; }
+
+  /* ---------- hero ---------- */
+  function renderHero() {
+    var la = latestActual(), nx = nextCheque();
+    var f = $('#slip-fields');
+    if (la) {
+      f.innerHTML = '<div class="f"><span class="label">Pay date</span><b>' + esc(fmtLong(dayNum(la.payday))) + '</b></div>' +
+        (la.periodStart ? '<div class="f"><span class="label">Period</span><b>' + esc(fmtMD(dayNum(la.periodStart)) + ' – ' + fmtMD(dayNum(la.periodEnd))) + '</b></div>' : '') +
+        '<div class="f"><span class="label">Into</span><b>BMO Chequing</b></div>';
+      $('#dep-amount').innerHTML = bigMoney(la.actual.amount);
+      var e = expNet(la), sub = 'Confirmed ' + (la.actual.confirmedAt ? fmtStamp(la.actual.confirmedAt) : '') + '.';
+      if (e != null) { var d = r2(la.actual.amount - e); sub += ' ' + (Math.abs(d) < 0.5 ? 'Right on the estimate.' : (d > 0 ? money.format(d) + ' more' : money.format(-d) + ' less') + ' than expected (' + money.format(e) + ').'); }
+      $('#dep-sub').textContent = state.loaded ? sub : 'Loading your cheques…';
+    } else {
+      f.innerHTML = '<div class="f"><span class="label">Pay date</span><b>' + esc(fmtLong(dayNum(nx.payday))) + '</b></div><div class="f"><span class="label">Into</span><b>BMO Chequing</b></div>';
+      $('#dep-amount').innerHTML = bigMoney(0);
+      $('#dep-sub').textContent = state.loaded ? 'No cheque confirmed yet. The day before payday, confirm what Dayforce shows and the split appears here.' : 'Loading your cheques…';
+    }
+    var h = '';
+    var en = expNet(nx), nd = dayNum(nx.payday);
+    h += head('Next cheque', esc(fmtWMD(nd)), en != null && en > 0 ? 'Expected ' + esc(money.format(en)) + (nx.expected && nx.expected.partial ? ' so far' : '') : 'No shifts in that period yet');
+    if (la) { var mc = movedCount(la); h += head('Money moved', mc.n + ' of ' + mc.tot, mc.n === mc.tot ? 'All moved for ' + esc(fmtMD(dayNum(la.payday))) : 'From your ' + esc(fmtMD(dayNum(la.payday))) + ' cheque', mc.n === mc.tot ? 'good' : 'warn'); }
+    else h += head('Money moved', '—', 'Nothing to move yet');
+    var s = la ? splitOf(la) : null;
+    if (s) h += head('Left to spend', esc(money.format(s.spend)), 'In KOHO after bills, to ' + esc(fmtMD(s.nextPayday - 1)), s.spend < 0 ? 'bad' : (s.spend < 60 ? 'warn' : ''));
+    else h += head('Left to spend', '—', 'Shows after your first split');
+    var sv = savingsTotal(), goal = Number(state.settings.shieldGoal) || 1000;
+    h += head('Savings shield', esc(money.format(sv)), Math.round(Math.min(100, sv / goal * 100)) + '% of ' + esc(money0.format(goal)), sv > 0 ? 'good' : '');
+    $('#heads').innerHTML = h;
+  }
+
+  /* ---------- move the money / confirm ---------- */
+  function renderTodo() {
+    var el = $('#todo'), la = latestActual(), nx = nextCheque(), t = todayNum(), html = '';
+    var canEdit = canWrite();
+    var nd = dayNum(nx.payday), due = nd - t <= 1, showConfirm = state.confirmFor === nx.payday || (due && !nx.synthetic) || (due && nx.synthetic);
+    html += '<div class="panel-head"><div><p class="label eyebrow">' + (showConfirm ? 'Payday is ' + esc(relDays(nd)) : 'Your to-do') + '</p><h2 id="h-todo">' + (showConfirm ? 'Confirm your cheque' : 'Move the money') + '</h2></div></div>';
+    if (showConfirm && canEdit) {
+      var en = expNet(nx), val = state.draftAmt !== '' ? state.draftAmt : (en != null && en > 0 ? en.toFixed(2) : '');
+      html += '<div class="confirm-box"><p>Dayforce shows your pay a day early. Enter the amount for <b>' + esc(fmtWMD(nd)) + '</b>' + (en != null && en > 0 ? ' (expected ' + esc(money.format(en)) + ')' : '') + ' and the split works itself out.</p>' +
+        '<div class="row"><label class="field money-in" style="flex:1 1 180px"><span>Amount on Dayforce</span><input id="conf-amt" type="number" inputmode="decimal" step="0.01" min="0" value="' + esc(val) + '"></label>' +
+        '<button class="btn btn-primary" type="button" data-action="confirm" data-id="' + esc(nx.payday) + '">Confirm and split</button>' +
+        (state.confirmFor ? '<button class="link" type="button" data-action="confirm-cancel">Not now</button>' : '') + '</div>' +
+        '<p class="small muted" id="conf-preview"></p></div>';
+    }
+    if (la) {
+      var s = splitOf(la), m = la.moved || {}, mc = movedCount(la);
+      html += '<div><p class="small muted">From your <b>' + esc(fmtWMD(dayNum(la.payday))) + '</b> cheque of ' + esc(money.format(la.actual.amount)) + (mc.n === mc.tot ? '. Everything is moved.' : '. Tick each one when you’ve sent it.') + '</p></div><div class="todo">';
+      ['card', 'koho', 'savings'].forEach(function (k) {
+        if (!(s[k] > 0)) return;
+        var done = !!m[k];
+        html += '<div class="move' + (done ? ' done' : '') + '"><span class="bar" style="background:' + ACCT[k].color + '"></span>' +
+          '<div class="what"><b>BMO Chequing → ' + esc(ACCT[k].name) + '</b><span class="small muted">' + esc(HOW[k]) + '</span></div>' +
+          '<div class="amt">' + esc(money.format(s[k])) + '</div>' +
+          '<div class="acts">' + (canEdit ? '<button type="button" class="tick" data-action="move" data-id="' + esc(la.payday) + '" data-k="' + k + '" aria-pressed="' + done + '"><i>' + (done ? '✓' : '') + '</i>' + (done ? 'Sent ' + esc(fmtStamp(m[k])) : 'Mark as sent') + '</button>' : (done ? chip('Sent', 'c-good') : chip('Not sent yet', 'c-warn'))) +
+          (k === 'koho' && s.billTotal > 0 ? '<span class="small muted">' + esc(money.format(s.billTotal)) + ' of it is for bills</span>' : '') + '</div></div>';
+      });
+      html += '</div>';
+      if (s.notes && s.notes.length) html += '<div class="banner warn"><p>' + s.notes.map(esc).join(' ') + '</p></div>';
+      if (canEdit) html += '<div class="row"><button class="link" type="button" data-action="reconfirm" data-id="' + esc(la.payday) + '">Fix the amount for this cheque</button></div>';
+    }
+    if (!showConfirm) {
+      var en2 = expNet(nx);
+      html += '<p class="small muted">Next cheque: <b>' + esc(fmtWMD(nd)) + '</b>' + (en2 != null && en2 > 0 ? ', about ' + esc(money.format(en2)) + ' so far' : '') + '. You can confirm it from <b>' + esc(fmtWMD(nd - 1)) + '</b>, when Dayforce shows it.' +
+        (canEdit ? ' <button class="link" type="button" data-action="confirm-early" data-id="' + esc(nx.payday) + '">Confirm early</button>' : '') + '</p>';
+    }
+    if (!la && !showConfirm && !state.loaded) html += '<div class="empty">Loading…</div>';
+    el.innerHTML = html;
+    updateConfirmPreview();
+  }
+  function updateConfirmPreview() {
+    var inp = $('#conf-amt'), out = $('#conf-preview'); if (!inp || !out) return;
+    var v = parseFloat(inp.value), nx = nextCheque();
+    if (!(v > 0)) { out.textContent = 'Enter the amount to see the split.'; return; }
+    var s = liveSplit(nx, v);
+    out.textContent = 'RBC ION Visa ' + money.format(s.card) + ' · KOHO ' + money.format(s.koho) + ' (' + money.format(s.billTotal) + ' for bills) · BMO Savings ' + money.format(s.savings);
+  }
+
+  /* ---------- donut + money flow ---------- */
+  function donutSvg(s) {
+    var C = 2 * Math.PI * 44, off = 0, segs = '', keys = ['card', 'koho', 'savings'], i = 0;
+    keys.forEach(function (k) {
+      var v = s[k]; if (!(v > 0) || !(s.amount > 0)) return;
+      var len = C * v / s.amount;
+      segs += '<circle class="seg" cx="60" cy="60" r="44" stroke="' + ACCT[k].color + '" stroke-dasharray="' + len.toFixed(2) + ' ' + (C - len + 0.01).toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '" style="--d:' + (i * 0.18) + 's"><title>' + esc(ACCT[k].name + ': ' + money.format(v)) + '</title></circle>';
+      off += len; i++;
+    });
+    return '<svg class="donut" viewBox="0 0 120 120" role="img" aria-label="Split of ' + esc(money.format(s.amount)) + '"><circle class="track" cx="60" cy="60" r="44"></circle>' + segs +
+      '<text x="60" y="57" text-anchor="middle" font-size="13" font-weight="600">' + esc(money0.format(s.amount)) + '</text><text class="sub" x="60" y="71" text-anchor="middle">THIS CHEQUE</text></svg>';
+  }
+  function pctChips(s) {
+    var keys = ['card', 'koho', 'savings'], out = '', i = 0;
+    keys.forEach(function (k) {
+      var v = s[k]; if (!(s.amount > 0)) return;
+      var p = Math.round(v / s.amount * 1000) / 10;
+      out += '<div class="pct" style="--d:' + (i * 0.12) + 's"><span class="p" style="color:' + ACCT[k].color + '">' + (Number.isInteger(p) ? p : p.toFixed(1)) + '%</span><span class="n">' + esc(ACCT[k].name) + '</span></div>'; i++;
+    });
+    return '<div class="pcts">' + out + '</div>';
+  }
+  function trunc(t, n) { t = String(t || ''); return t.length > n ? t.slice(0, n - 1) + '…' : t; }
+  function flowSvg(s, label) {
+    var W = 720, nodeW = 12, c0 = 132, c1 = 336, c2 = 520, top = 14, scale = 250 / Math.max(1, s.amount), gap = 24;
+    var col1 = [];
+    ['card', 'koho', 'savings'].forEach(function (k) { if (s[k] > 0) col1.push({ k: k, v: s[k], h: Math.max(3, s[k] * scale) }); });
+    var y = top; col1.forEach(function (n) { n.y = y; y += n.h + gap; });
+    var col1Bottom = y - gap, totalH1 = col1Bottom - top;
+    var h0 = Math.max(3, s.amount * scale), y0 = top + (totalH1 - h0) / 2;
+    var kids = [], kohoNode = col1.filter(function (n) { return n.k === 'koho'; })[0];
+    if (kohoNode) {
+      s.bills.forEach(function (b) { kids.push({ name: b.name, v: b.amount, color: 'var(--c-bill)', sub: b.day != null ? fmtMD(b.day) : 'set aside' }); });
+      if (s.spend > 0.004) kids.push({ name: 'Spending money', v: s.spend, color: 'var(--c-spend)', sub: 'until ' + fmtMD(s.nextPayday - 1) });
+      var yk = kohoNode.y - 6;
+      kids.forEach(function (n) { n.h = Math.max(2.5, n.v * scale); n.slot = Math.max(n.h, 36); n.y = yk; yk += n.slot + 8; });
+    }
+    var H = Math.ceil(Math.max(col1Bottom, kids.length ? kids[kids.length - 1].y + kids[kids.length - 1].slot : 0, y0 + h0) + 16);
+    function band(x1, y1a, y1b, x2, y2a, y2b, color, d) {
+      var mx = (x1 + x2) / 2;
+      return '<path class="lk" style="--d:' + d + 's" fill="' + color + '" fill-opacity="0.32" d="M' + x1 + ',' + y1a.toFixed(1) + ' C' + mx + ',' + y1a.toFixed(1) + ' ' + mx + ',' + y2a.toFixed(1) + ' ' + x2 + ',' + y2a.toFixed(1) + ' L' + x2 + ',' + y2b.toFixed(1) + ' C' + mx + ',' + y2b.toFixed(1) + ' ' + mx + ',' + y1b.toFixed(1) + ' ' + x1 + ',' + y1b.toFixed(1) + ' Z"></path>';
+    }
+    var g = '', sy = y0;
+    col1.forEach(function (n, i) { var hh = n.v * scale; g += band(c0 + nodeW, sy, sy + hh, c1, n.y, n.y + Math.max(hh, 0.1), ACCT[n.k].color, 0.1 + i * 0.12); sy += hh; });
+    if (kohoNode) { var ky = kohoNode.y; kids.forEach(function (n, i) { var hh = n.v * scale; g += band(c1 + nodeW, ky, ky + hh, c2, n.y, n.y + hh, n.color, 0.45 + i * 0.07); ky += hh; }); }
+    g += '<rect x="' + c0 + '" y="' + y0.toFixed(1) + '" width="' + nodeW + '" height="' + h0.toFixed(1) + '" rx="2" fill="var(--c-chq)"></rect>';
+    g += '<text x="' + (c0 - 10) + '" y="' + (y0 + h0 / 2 - 4).toFixed(1) + '" text-anchor="end">' + esc(label || 'BMO Chequing') + '</text><text class="amt" x="' + (c0 - 10) + '" y="' + (y0 + h0 / 2 + 13).toFixed(1) + '" text-anchor="end">' + esc(money.format(s.amount)) + '</text>';
+    col1.forEach(function (n) {
+      g += '<rect x="' + c1 + '" y="' + n.y.toFixed(1) + '" width="' + nodeW + '" height="' + n.h.toFixed(1) + '" rx="2" fill="' + ACCT[n.k].color + '"></rect>';
+      var cy = n.y + n.h / 2;
+      var tx = c1 - 10, nm = ACCT[n.k].name, w = Math.max(nm.length * 7.6, money.format(n.v).length * 8.3) + 18;
+      g += '<rect class="pill" x="' + (tx - w + 6).toFixed(1) + '" y="' + (cy - 20).toFixed(1) + '" width="' + w.toFixed(1) + '" height="40" rx="6"></rect>';
+      g += '<text x="' + tx + '" y="' + (cy - 3).toFixed(1) + '" text-anchor="end">' + esc(nm) + '</text><text class="amt" x="' + tx + '" y="' + (cy + 14).toFixed(1) + '" text-anchor="end">' + esc(money.format(n.v)) + '</text>';
+    });
+    kids.forEach(function (n) {
+      g += '<rect x="' + c2 + '" y="' + n.y.toFixed(1) + '" width="' + nodeW + '" height="' + n.h.toFixed(1) + '" rx="2" fill="' + n.color + '"></rect>';
+      var lx = c2 + nodeW + 10, ty = n.y + Math.max(0, (n.h - 32) / 2);
+      g += '<text x="' + lx + '" y="' + (ty + 12).toFixed(1) + '">' + esc(trunc(n.name, 26)) + '</text><text x="' + lx + '" y="' + (ty + 29).toFixed(1) + '"><tspan class="amt">' + esc(money.format(n.v)) + '</tspan><tspan class="mut" dx="6">' + esc(n.sub) + '</tspan></text>';
+    });
+    return '<svg class="flow" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="How ' + esc(money.format(s.amount)) + ' flows to your accounts and bills">' + g + '</svg>';
+  }
+  function splitBlock(s, label) {
+    return '<div class="split-top"><div>' + donutSvg(s) + '</div><div style="display:grid;gap:12px">' + pctChips(s) +
+      '<div class="kv" style="max-width:420px"><dt>Bills due before ' + esc(fmtMD(s.nextPayday)) + '</dt><dd>' + esc(money.format(s.billTotal)) + '</dd><dt>Left to spend in KOHO</dt><dd class="big2" style="color:' + (s.spend < 0 ? 'var(--bad)' : 'inherit') + '">' + esc(money.format(s.spend)) + '</dd><dt>Plan used</dt><dd>' + esc(s.phase === 'steady' ? 'Card paid off' : 'Paying down card') + '</dd></div>' +
+      (s.notes && s.notes.length ? '<p class="small" style="color:var(--warn)">' + s.notes.map(esc).join(' ') + '</p>' : '') + '</div></div>' +
+      '<div class="flow-box"><p class="label" style="margin-bottom:6px">Where the money goes</p>' + flowSvg(s, label) + '<p class="swipe">Swipe sideways to see the whole flow.</p></div>';
+  }
+  function renderExpected() {
+    var el = $('#expected'), nx = nextCheque(), en = expNet(nx), nd = dayNum(nx.payday), html = '';
+    html += '<div class="panel-head"><div><p class="label eyebrow">Expected cheque split</p><h2 id="h-expected">' + esc(fmtWMD(nd)) + (en > 0 ? ' · ' + esc(money.format(en)) : '') + '</h2></div>' +
+      (nx.expected && nx.expected.updatedAt ? '<span class="chip c-muted">From your shifts · ' + esc(fmtStamp(nx.expected.updatedAt)) + '</span>' : '') + '</div>';
+    if (en > 0) {
+      var e = nx.expected, s = liveSplit(nx, en);
+      html += '<p class="hint">Based on ' + esc(String(e.hours)) + ' h across ' + esc(String(e.shiftCount)) + ' shift' + (e.shiftCount === 1 ? '' : 's') + ' from ' + esc(fmtMD(dayNum(e.periodStart || nx.periodStart))) + ' to ' + esc(fmtMD(dayNum(e.periodEnd || nx.periodEnd))) + '. It goes up as shifts get added to your SafeWalk app.</p>';
+      html += splitBlock(s, 'BMO Chequing');
+    } else {
+      html += '<div class="empty">No shifts are in your SafeWalk app for this pay period yet, so there’s nothing to expect. Once Chris posts the schedule, the expected split shows up here.</div>';
+    }
+    el.innerHTML = html;
+    observeSweep(el, 'exp-' + nx.payday + '-' + en);
+  }
+  function renderActual() {
+    var el = $('#actual'), list = confirmed(), html = '';
+    var pick = state.actualPick && list.some(function (c) { return c.payday === state.actualPick; }) ? state.actualPick : (list.length ? list[list.length - 1].payday : null);
+    var c = pick ? list.filter(function (x) { return x.payday === pick; })[0] : null;
+    html += '<div class="panel-head"><div><p class="label eyebrow">Actual cheque split</p><h2 id="h-actual">' + (c ? esc(fmtWMD(dayNum(c.payday))) + ' · ' + esc(money.format(c.actual.amount)) : 'Waiting for your first cheque') + '</h2></div>';
+    if (list.length > 1) html += '<div class="picker" role="group" aria-label="Pick a cheque">' + list.slice(-6).map(function (x) { return '<button type="button" data-action="pick-actual" data-id="' + esc(x.payday) + '" aria-pressed="' + (x.payday === pick) + '">' + esc(fmtMD(dayNum(x.payday))) + '</button>'; }).join('') + '</div>';
+    html += '</div>';
+    if (c) {
+      var s = splitOf(c), e = expNet(c);
+      if (e != null) { var d = r2(c.actual.amount - e); html += '<p class="diff">' + chip(Math.abs(d) < 0.5 ? 'On estimate' : (d > 0 ? '+' : '−') + money.format(Math.abs(d)) + ' vs expected', Math.abs(d) < 0.5 ? 'c-good' : (d > 0 ? 'c-good' : 'c-warn')) + '<span class="muted">Expected ' + esc(money.format(e)) + '</span></p>'; }
+      html += splitBlock(s, 'BMO Chequing');
+    } else {
+      html += '<div class="empty">Confirm a cheque and its real split shows here, next to what was expected.</div>';
+    }
+    el.innerHTML = html;
+    observeSweep(el, 'act-' + (c ? c.payday + '-' + c.actual.amount : 'none'));
+  }
+  var io = null;
+  function observeSweep(el, key) {
+    if (state.animated[el.id] === key) return;
+    el.classList.remove('sweep');
+    if (!('IntersectionObserver' in window) || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { state.animated[el.id] = key; return; }
+    if (!io) io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        var t = en.target, k = t.getAttribute('data-sweep-key');
+        if (state.animated[t.id] === k) return;
+        state.animated[t.id] = k; t.classList.remove('sweep'); void t.offsetWidth; t.classList.add('sweep'); io.unobserve(t);
+      });
+    }, { threshold: 0.25 });
+    el.setAttribute('data-sweep-key', key); io.unobserve(el); io.observe(el);
+  }
+
+  /* ---------- accounts ---------- */
+  function nextMove(k) {
+    var la = latestActual(); if (la) { var s = splitOf(la); if (s[k] > 0 && !(la.moved && la.moved[k])) return { amount: s[k], day: dayNum(la.payday), pending: true, from: la }; }
+    var nx = nextCheque(), en = expNet(nx); if (en > 0) { var s2 = liveSplit(nx, en); return { amount: s2[k], day: dayNum(nx.payday), pending: false, expected: true, split: s2 }; }
+    return null;
+  }
+  function renderAccounts() {
+    var html = '', la = latestActual(), nx = nextCheque();
+    function row(k, nm, sub, right, rsub, body) {
+      var open = !!state.open[k];
+      return '<div class="acct"><button class="acct-btn" type="button" data-action="acct" data-k="' + k + '" aria-expanded="' + open + '" aria-controls="ab-' + k + '"><span class="stripe" style="background:' + ACCT[k].color + '"></span>' +
+        '<span class="nm"><b>' + esc(nm) + '</b><span>' + esc(sub) + '</span></span><span class="nx"><b>' + right + '</b><span>' + esc(rsub) + '</span></span><span class="chev" aria-hidden="true">›</span></button>' +
+        '<div class="acct-body" id="ab-' + k + '"' + (open ? '' : ' hidden') + '>' + body + '</div></div>';
+    }
+    // BMO Chequing
+    var en = expNet(nx), deps = confirmed().slice(-5).reverse();
+    var chqBody = '<dl class="kv"><dt>Next deposit</dt><dd>' + esc(fmtWMD(dayNum(nx.payday))) + '</dd><dt>Expected so far</dt><dd>' + (en > 0 ? esc(money.format(en)) : '—') + '</dd>' +
+      (la ? '<dt>Last deposit</dt><dd>' + esc(money.format(la.actual.amount)) + ' · ' + esc(fmtMD(dayNum(la.payday))) + '</dd><dt>Stays in chequing</dt><dd>' + esc(money.format(0)) + '</dd>' : '') + '</dl>' +
+      (deps.length ? '<div><p class="label" style="margin-bottom:4px">Recent deposits</p><dl class="kv">' + deps.map(function (c) { return '<dt>' + esc(fmtWMD(dayNum(c.payday))) + '</dt><dd>' + esc(money.format(c.actual.amount)) + '</dd>'; }).join('') + '</dl></div>' : '') +
+      '<p class="small muted">Everything that lands here gets split out, so chequing goes back to about $0 each payday.</p>';
+    html += row('chq', 'BMO Chequing', ACCT.chq.role, en > 0 ? esc(money.format(en)) : '—', 'expected ' + fmtMD(dayNum(nx.payday)), chqBody);
+    // RBC ION Visa, KOHO, BMO Savings
+    ['card', 'koho', 'savings'].forEach(function (k) {
+      var nm = nextMove(k), right = nm ? esc(money.format(nm.amount)) : '—', rsub = nm ? (nm.pending ? 'send now · ' + fmtMD(nm.day) : 'on ' + fmtMD(nm.day)) : 'no cheque yet';
+      var body = '<dl class="kv"><dt>' + (nm && nm.pending ? 'Payment to send' : 'Next payment') + '</dt><dd class="big2">' + right + '</dd><dt>Date</dt><dd>' + (nm ? esc(fmtWMD(nm.day)) + (nm.pending ? ' (cheque is in)' : '') : '—') + '</dd>' + (nm && nm.expected ? '<dt>Based on</dt><dd>expected cheque</dd>' : '') + '</dl>' +
+        '<p class="small muted">' + esc(HOW[k]) + '</p>';
+      if (k === 'card') body += cardMini();
+      if (k === 'koho') body += kohoMini(nm);
+      if (k === 'savings') body += saveMini();
+      html += row(k, ACCT[k].name, ACCT[k].role, right, rsub, body);
+    });
+    $('#acct-list').innerHTML = html;
+  }
+  function cardMini() {
+    var c = state.settings.card || {}, lim = Number(c.limit), bal = c.balance != null && c.balance !== '' ? Number(c.balance) : null;
+    if (!(lim > 0) || bal == null) return '<div class="banner"><p>Add your card’s limit and what you owe so the page can track your paydown.</p><button class="link" type="button" data-action="jump" data-v="goals">Add them</button></div>';
+    var now = Math.max(0, r2(bal - cardPaidSince())), u = Math.round(now / lim * 100);
+    return '<dl class="kv"><dt>Owed (after payments ticked here)</dt><dd>' + esc(money.format(now)) + '</dd><dt>Credit used</dt><dd style="color:' + (u > 30 ? 'var(--warn)' : 'var(--good)') + '">' + u + '%</dd></dl>';
+  }
+  function kohoMini(nm) {
+    var s = nm ? (nm.from ? splitOf(nm.from) : nm.split) : null, html = '';
+    if (s) html += '<dl class="kv"><dt>Bills due before ' + esc(fmtMD(s.nextPayday)) + '</dt><dd>' + esc(money.format(s.billTotal)) + '</dd><dt>Left to spend</dt><dd class="big2">' + esc(money.format(s.spend)) + '</dd></dl>';
+    html += '<div class="row"><button class="btn btn-quiet" type="button" data-action="koho-bills" aria-expanded="' + state.showKohoBills + '">' + (state.showKohoBills ? 'Hide bills' : 'See bills') + '</button></div>';
+    if (state.showKohoBills) {
+      var kb = state.bills.filter(function (b) { return (b.from || 'koho') === 'koho' && b.status !== 'cancelled'; }).sort(billSort);
+      html += '<div class="bills">' + kb.map(function (b) { return '<div class="bill"><div class="bn">' + esc(b.name) + (b.status === 'cancelling' ? chip('Cancelling', 'c-warn') : '') + '</div><div class="bm">' + esc(billWhen(b)) + '</div><div class="ba"><span>' + (ENGINE.billMonthly(b) ? esc(money.format(ENGINE.billMonthly(b))) : 'Add price') + '</span></div></div>'; }).join('') + '</div>' +
+        '<button class="link" type="button" data-action="jump" data-v="bills">Edit bills</button>';
+    }
+    return html;
+  }
+  function saveMini() {
+    var sv = savingsTotal(), goal = Number(state.settings.shieldGoal) || 1000;
+    return '<dl class="kv"><dt>Shield so far</dt><dd class="big2">' + esc(money.format(sv)) + '</dd><dt>Goal</dt><dd>' + esc(money0.format(goal)) + ' (' + Math.round(Math.min(100, sv / goal * 100)) + '%)</dd></dl>';
+  }
+
+  /* ---------- bills ---------- */
+  function billWhen(b) { var d = Number(b.day); return (d >= 1 && d <= 31 ? 'Renews on the ' + ord(d) : 'Date not set · set aside each cheque') + ' · from ' + ((b.from || 'koho') === 'card' ? 'RBC ION Visa' : 'KOHO'); }
+  function billSort(a, b) { var da = Number(a.day) || 99, db = Number(b.day) || 99; return da - db || String(a.name).localeCompare(String(b.name)); }
+  function billForm(b) {
+    var id = b ? b.id : 'new', v = b || { name: '', amount: '', taxPct: 13, day: '', from: 'koho', status: 'active' };
+    return '<form class="bill-form" data-bill-form="' + esc(id) + '">' +
+      '<div class="grid2"><label class="field"><span>Name</span><input id="bf-name-' + esc(id) + '" name="name" value="' + esc(v.name) + '" required></label>' +
+      '<label class="field"><span>Price</span><input id="bf-amt-' + esc(id) + '" name="amount" type="number" step="0.01" min="0" inputmode="decimal" value="' + esc(v.amount == null ? '' : v.amount) + '"></label></div>' +
+      '<div class="grid3"><label class="field"><span>Tax on top</span><select id="bf-tax-' + esc(id) + '" name="taxPct"><option value="13"' + (Number(v.taxPct) === 13 ? ' selected' : '') + '>Add 13% HST</option><option value="0"' + (!Number(v.taxPct) ? ' selected' : '') + '>Price already includes tax</option></select></label>' +
+      '<label class="field"><span>Renews on day</span><input id="bf-day-' + esc(id) + '" name="day" type="number" min="1" max="31" inputmode="numeric" placeholder="Not sure" value="' + esc(v.day == null ? '' : v.day) + '"></label>' +
+      '<label class="field"><span>Paid from</span><select id="bf-from-' + esc(id) + '" name="from"><option value="koho"' + ((v.from || 'koho') === 'koho' ? ' selected' : '') + '>KOHO</option><option value="card"' + (v.from === 'card' ? ' selected' : '') + '>RBC ION Visa</option></select></label></div>' +
+      '<label class="field"><span>Status</span><select id="bf-status-' + esc(id) + '" name="status"><option value="active"' + (v.status === 'active' || !v.status ? ' selected' : '') + '>Active</option><option value="cancelling"' + (v.status === 'cancelling' ? ' selected' : '') + '>Cancelling soon</option><option value="cancelled"' + (v.status === 'cancelled' ? ' selected' : '') + '>Cancelled (stops counting)</option></select></label>' +
+      '<div class="row"><button class="btn btn-primary" type="submit">Save bill</button><button class="link" type="button" data-action="bill-cancel">Cancel</button>' +
+      (b ? (state.confirmDel === b.id ? '<span class="small">Delete ' + esc(b.name) + '? <button class="link danger" type="button" data-action="bill-del-yes" data-id="' + esc(b.id) + '">Yes, delete</button> <button class="link" type="button" data-action="bill-del-no">Keep</button></span>' : '<button class="link danger" type="button" data-action="bill-del" data-id="' + esc(b.id) + '">Delete</button>') : '') + '</div></form>';
+  }
+  function renderBills() {
+    var el = $('#bills'), canEdit = canWrite(), mon = monthlyBills(), per = r2(mon * 12 / 26);
+    var la = latestActual(), nx = nextCheque(), base = la && dayNum(la.payday) + (Number(state.settings.payEvery) || 14) > todayNum() ? la : nx;
+    var s = splitOf(base) || ENGINE.compute(state.settings, state.bills, 0, dayNum(base.payday));
+    var dueIds = {}; s.bills.forEach(function (b) { dueIds[b.id] = b; });
+    var html = '<div class="panel-head"><div><p class="label eyebrow">Paid from KOHO unless you say otherwise</p><h2 id="h-bills">Bills</h2></div>' + (canEdit ? '<button class="btn btn-quiet" type="button" data-action="bill-add">Add a bill</button>' : '') + '</div>';
+    html += '<div class="totals"><span>Every month <b>' + esc(money.format(mon)) + '</b></span><span>Per cheque <b>' + esc(money.format(per)) + '</b></span><span>Due ' + esc(fmtMD(dayNum(base.payday))) + '–' + esc(fmtMD(dayNum(base.payday) + 13)) + ' <b>' + esc(money.format(s.billTotal)) + '</b></span></div>';
+    if (state.editBill === 'new') html += billForm(null);
+    var list = state.bills.slice().sort(billSort);
+    if (!list.length) html += '<div class="empty">No bills yet. Add your phone and subscriptions so KOHO always gets enough.</div>';
+    html += '<div class="bills">';
+    list.forEach(function (b) {
+      var amt = ENGINE.billMonthly(b), off = b.status === 'cancelled', due = dueIds[b.id];
+      html += '<div class="bill' + (off ? ' off' : '') + '"><div class="bn">' + esc(b.name) + (b.status === 'cancelling' ? chip('Cancelling soon', 'c-warn') : '') + (off ? chip('Cancelled', 'c-muted') : '') + (due && !due.spread ? chip('Due ' + fmtMD(due.day), 'c-info') : '') + (b.amount == null || b.amount === '' ? chip('Add price', 'c-bad') : '') + '</div>' +
+        '<div class="bm">' + esc(billWhen(b)) + (Number(b.taxPct) ? ' · ' + esc(money.format(Number(b.amount) || 0)) + ' + HST' : '') + (b.note ? ' · ' + esc(b.note) : '') + '</div>' +
+        '<div class="ba"><span>' + (amt ? esc(money.format(amt)) : '—') + '</span>' + (canEdit ? '<button class="link" type="button" data-action="bill-edit" data-id="' + esc(b.id) + '">Edit</button>' : '') + '</div>' +
+        (state.editBill === b.id ? billForm(b) : '') + '</div>';
+    });
+    html += '</div>';
+    el.innerHTML = html;
+  }
+
+  /* ---------- planner ---------- */
+  function planDefaults() {
+    var st = state.settings, rules = deepMerge(DEFAULTS.rules, st.rules || {}), nx = nextCheque(), en = expNet(nx), la = latestActual();
+    var amt = en > 0 ? en : (la ? la.actual.amount : 800);
+    return { phase: st.phase || 'paydown', amount: Math.round(amt), cardPct: rules.paydown.cardPct, savingsFixed: rules.paydown.savingsFixed, cardMonthly: rules.steady.cardMonthly, savingsPct: rules.steady.savingsPct, payday: nx.payday };
+  }
+  function renderPlannerControls() {
+    if (!state.plan) state.plan = planDefaults();
+    var p = state.plan;
+    $('#pp-paydown').setAttribute('aria-pressed', p.phase === 'paydown'); $('#pp-steady').setAttribute('aria-pressed', p.phase === 'steady');
+    $('#plan-hint').textContent = p.phase === 'paydown' ? 'While you’re paying off the card: a share of each cheque goes to the card, a fixed amount to savings, and KOHO gets the rest for bills and spending.' : 'Once the card is at $0: the card gets one monthly payment from the first cheque of the month, and the rest splits between savings and KOHO.';
+    var a = $('#pl-amount'); a.value = p.amount; $('#pl-amount-v').textContent = money0.format(p.amount);
+    var c = $('#pl-card'), s = $('#pl-save');
+    if (p.phase === 'paydown') { c.min = 0; c.max = 80; c.step = 1; c.value = p.cardPct; $('#pl-card-l').textContent = 'To RBC ION Visa (share of cheque)'; $('#pl-card-v').textContent = p.cardPct + '%'; s.min = 0; s.max = 500; s.step = 5; s.value = p.savingsFixed; $('#pl-save-l').textContent = 'To BMO Savings (fixed)'; $('#pl-save-v').textContent = money0.format(p.savingsFixed); }
+    else { c.min = 0; c.max = 600; c.step = 10; c.value = p.cardMonthly; $('#pl-card-l').textContent = 'To RBC ION Visa (once a month)'; $('#pl-card-v').textContent = money0.format(p.cardMonthly); s.min = 0; s.max = 80; s.step = 1; s.value = p.savingsPct; $('#pl-save-l').textContent = 'To BMO Savings (share of what’s left)'; $('#pl-save-v').textContent = p.savingsPct + '%'; }
+    $('#pl-save-btn').hidden = !canWrite();
+    renderPlannerResult();
+  }
+  function renderPlannerResult() {
+    var p = state.plan; if (!p) return;
+    var rules = p.phase === 'paydown' ? { paydown: { cardPct: p.cardPct, savingsFixed: p.savingsFixed } } : { steady: { cardMonthly: p.cardMonthly, savingsPct: p.savingsPct } };
+    var s = ENGINE.compute(state.settings, state.bills, p.amount, dayNum(p.payday), { phase: p.phase, rules: rules });
+    var html = '<div class="stack" role="img" aria-label="Split bar">' + ['card', 'koho', 'savings'].map(function (k) { return '<span style="width:' + (s.amount > 0 ? s[k] / s.amount * 100 : 0) + '%;background:' + ACCT[k].color + '" title="' + esc(ACCT[k].name) + '"></span>'; }).join('') + '</div>';
+    ['card', 'koho', 'savings'].forEach(function (k) { html += '<div class="res-row">' + dot(ACCT[k].color) + '<span>' + esc(ACCT[k].name) + '</span><b>' + esc(money.format(s[k])) + '</b></div>'; });
+    html += '<div class="res-row">' + dot('var(--c-bill)') + '<span>Bills due before ' + esc(fmtMD(s.nextPayday)) + '</span><b>−' + esc(money.format(s.billTotal)) + '</b></div>';
+    html += '<div class="res-row">' + dot('var(--c-spend)') + '<span><b style="font-family:var(--f-body)">Left to spend</b> for 2 weeks</span><b style="color:' + (s.spend < 0 ? 'var(--bad)' : 'inherit') + '">' + esc(money.format(s.spend)) + '</b></div>';
+    html += '<p class="small muted">About ' + esc(money.format(s.spend / 14)) + ' a day for food, transit and everything else, using the bills due ' + esc(fmtMD(dayNum(p.payday))) + '–' + esc(fmtMD(s.nextPayday - 1)) + '.</p>';
+    if (s.notes.length) html += '<p class="small" style="color:var(--warn)">' + s.notes.map(esc).join(' ') + '</p>';
+    var g = shieldForecast(p.phase === 'paydown' ? s.savings : s.savings);
+    if (g) html += '<p class="small muted">' + esc(g) + '</p>';
+    $('#pl-res').innerHTML = html;
+  }
+  function shieldForecast(perCheque) {
+    var sv = savingsTotal(), goal = Number(state.settings.shieldGoal) || 1000;
+    if (sv >= goal) return 'Your shield already passed ' + money0.format(goal) + '.';
+    if (!(perCheque > 0)) return '';
+    var n = Math.ceil((goal - sv) / perCheque), nx = nextCheque(), d = dayNum(nx.payday) + (n - 1) * (Number(state.settings.payEvery) || 14);
+    return 'At this pace your savings shield reaches ' + money0.format(goal) + ' in ' + n + ' cheque' + (n === 1 ? '' : 's') + ', around ' + fmtLong(d) + '.';
+  }
+
+  /* ---------- goals ---------- */
+  function renderGoals() {
+    var st = state.settings, c = st.card || {}, canEdit = canWrite(), html = '';
+    var lim = Number(c.limit), bal = c.balance != null && c.balance !== '' ? Number(c.balance) : null;
+    // Card payoff
+    html += '<div style="display:grid;gap:12px"><h3>RBC ION Visa payoff</h3>';
+    if (lim > 0 && bal != null) {
+      var paid = cardPaidSince(), now = Math.max(0, r2(bal - paid)), u = now / lim * 100;
+      html += '<div class="stat2"><span class="label">Owed now</span><span class="v">' + esc(money.format(now)) + '</span><span class="small muted">of a ' + esc(money0.format(lim)) + ' limit · ' + Math.round(u) + '% used' + (paid > 0 ? ' · ' + esc(money.format(paid)) + ' paid here since ' + esc(c.asOf ? fmtMD(dayNum(c.asOf)) : 'you added it') : '') + '</span></div>';
+      html += '<div class="meter" role="img" aria-label="' + Math.round(u) + '% of your limit used"><span style="width:' + Math.min(100, u) + '%;background:' + (u > 30 ? 'var(--warn)' : 'var(--good)') + '"></span><span class="mark" style="left:30%" title="30%"></span></div><div class="meter-l"><span>$0</span><span>30%: good for your score</span><span>' + esc(money0.format(lim)) + '</span></div>';
+      var nx = nextCheque(), en = expNet(nx), per = (st.phase === 'steady') ? 0 : r2((en > 0 ? en : 800) * (Number(deepMerge(DEFAULTS.rules, st.rules || {}).paydown.cardPct) || 0) / 100);
+      if (now <= 0) html += '<div class="banner"><p>Your card is paid off. Switch the plan to “Card paid off” so more goes to KOHO and savings.</p>' + (canEdit && st.phase !== 'steady' ? '<button class="link" type="button" data-action="set-phase" data-v="steady">Switch now</button>' : '') + '</div>';
+      else if (per > 0) { var n = Math.ceil(now / per); html += '<p class="small muted">At about ' + esc(money.format(per)) + ' a cheque, it’s paid off in ' + n + ' cheque' + (n === 1 ? '' : 's') + ' (around ' + esc(fmtLong(dayNum(nx.payday) + (n - 1) * 14)) + '), if you don’t add new spending.</p>'; }
+      html += '<p class="small muted">While you still owe from past months, new charges get interest right away. Pay the full statement for a month or two before moving bills onto the card.</p>';
+    } else {
+      html += '<p class="small muted">Add your limit and what you owe today. Payments you tick as sent come off the balance here.</p>';
+    }
+    if (canEdit) html += '<form class="grid2" data-form="card"><label class="field"><span>Card limit</span><input id="cf-limit" name="limit" type="number" step="1" min="0" inputmode="decimal" value="' + esc(lim > 0 ? lim : '') + '" placeholder="e.g. 1000"></label><label class="field"><span>Owed today</span><input id="cf-bal" name="balance" type="number" step="0.01" min="0" inputmode="decimal" value="' + esc(bal != null ? bal : '') + '" placeholder="e.g. 680"></label><div class="row" style="grid-column:1/-1"><button class="btn btn-quiet" type="submit">Save card</button></div></form>';
+    html += '</div>';
+    // Savings shield
+    var sv = savingsTotal(), goal = Number(st.shieldGoal) || 1000, mon = monthlyBills();
+    html += '<div style="display:grid;gap:12px"><h3>Savings shield</h3><div class="stat2"><span class="label">In BMO Savings (from this page)</span><span class="v" style="color:var(--c-save)">' + esc(money.format(sv)) + '</span><span class="small muted">Goal ' + esc(money0.format(goal)) + (Number(st.savingsStart) ? ' · started with ' + esc(money.format(st.savingsStart)) : '') + '</span></div>';
+    var marks = [{ v: mon, t: '1 month of bills' }, { v: mon * 3, t: '3 months' }].filter(function (m) { return m.v < goal; });
+    html += '<div class="meter" role="img" aria-label="' + Math.round(sv / goal * 100) + '% of your goal"><span style="width:' + Math.min(100, sv / goal * 100) + '%;background:var(--c-save)"></span>' + marks.map(function (m) { return '<span class="mark" style="left:' + (m.v / goal * 100) + '%" title="' + esc(m.t + ' ' + money.format(m.v)) + '"></span>'; }).join('') + '</div>';
+    html += '<div class="meter-l"><span>$0</span>' + marks.map(function (m) { return '<span>' + esc(m.t) + '</span>'; }).join('') + '<span>' + esc(money0.format(goal)) + '</span></div>';
+    html += shieldBars();
+    var la = latestActual(), per2 = la ? splitOf(la).savings : (expNet(nextCheque()) > 0 ? liveSplit(nextCheque(), expNet(nextCheque())).savings : 150);
+    var fc = shieldForecast(per2); if (fc) html += '<p class="small muted">' + esc(fc) + '</p>';
+    if (canEdit) html += '<form class="grid2" data-form="shield"><label class="field"><span>Already in BMO Savings</span><input id="sf-start" name="start" type="number" step="0.01" min="0" inputmode="decimal" value="' + esc(Number(st.savingsStart) || '') + '" placeholder="0"></label><label class="field"><span>Goal</span><input id="sf-goal" name="goal" type="number" step="10" min="0" inputmode="decimal" value="' + esc(goal) + '"></label><div class="row" style="grid-column:1/-1"><button class="btn btn-quiet" type="submit">Save shield</button></div></form>';
+    html += '</div>';
+    $('#goal-cols').innerHTML = html;
+  }
+  function shieldBars() {
+    var list = confirmed().slice(-8), st = state.settings; if (!list.some(function (c) { return c.moved && c.moved.savings; })) return '';
+    var run = Number(st.savingsStart) || 0, pts = list.map(function (c) { if (c.moved && c.moved.savings && c.split) run += Number(c.split.savings) || 0; return { d: dayNum(c.payday), v: r2(run), sent: !!(c.moved && c.moved.savings) }; });
+    var max = Math.max(Number(st.shieldGoal) || 1000, pts[pts.length - 1].v) || 1, W = 320, H = 110, bw = Math.min(30, (W - 20) / pts.length - 8), g = '';
+    g += '<line class="gl" x1="0" x2="' + W + '" y1="' + (H - 18) + '" y2="' + (H - 18) + '"></line>';
+    pts.forEach(function (p, i) {
+      var x = 10 + i * ((W - 20) / pts.length), h = (H - 30) * p.v / max;
+      g += '<rect x="' + x.toFixed(1) + '" y="' + (H - 18 - h).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + Math.max(0, h).toFixed(1) + '" rx="3" fill="var(--c-save)" fill-opacity="' + (p.sent ? 0.9 : 0.35) + '"></rect>';
+      g += '<text x="' + (x + bw / 2).toFixed(1) + '" y="' + (H - 4) + '" text-anchor="middle">' + esc(fmtMD(p.d)) + '</text>';
+      if (i === pts.length - 1) g += '<text x="' + (x + bw / 2).toFixed(1) + '" y="' + Math.max(10, H - 22 - h).toFixed(1) + '" text-anchor="middle" style="fill:var(--ink);font-weight:600">' + esc(money0.format(p.v)) + '</text>';
+    });
+    return '<svg class="bars" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Savings after each cheque">' + g + '</svg>';
+  }
+
+  /* ---------- ask Claude ---------- */
+  var ASKS = ['Can I afford a $50 purchase this week?', 'When will my card be paid off?', 'How much will I have saved by January?', 'Is my split realistic for food and transit?'];
+  function renderAsk() {
+    var el = $('#ask-body'), a = state.ask;
+    if (!sampleFn) { el.innerHTML = '<p class="small muted">' + (state.mode === 'snapshot' ? 'Asking Claude works in the Claude app version of this page. Open it from your Claude artifacts.' : 'Asking Claude needs the Claude app. Open this page from Claude to use it.') + '</p>'; $('#jump-ask').hidden = state.mode === 'snapshot'; return; }
+    el.innerHTML = '<div style="display:grid;gap:12px"><div class="asks">' + ASKS.map(function (q, i) { return '<button type="button" data-action="ask-chip" data-i="' + i + '">' + esc(q) + '</button>'; }).join('') + '</div>' +
+      '<form data-form="ask" class="row"><label class="field" style="flex:1 1 260px"><span>Your question</span><textarea id="ask-q" rows="2" placeholder="e.g. Can I put $50 more on the card this time?">' + esc(a.q) + '</textarea></label><button class="btn btn-primary" type="submit"' + (a.busy ? ' disabled' : '') + '>' + (a.busy ? 'Thinking…' : 'Ask') + '</button>' + (a.busy ? '<button class="link" type="button" data-action="ask-stop">Stop</button>' : '') + '</form>' +
+      (a.text ? '<div class="answer" id="ask-out">' + esc(a.text) + '</div>' : '<div id="ask-out" hidden></div>') + (a.err ? '<p class="small" style="color:var(--bad)">' + esc(a.err) + '</p>' : '') +
+      '<p class="small muted">Claude only sees the numbers on this page. It’s a helper for planning, not financial advice.</p></div>';
+  }
+  var askCtl = null;
+  function askContext() {
+    var nx = nextCheque(), la = latestActual(), st = state.settings;
+    return JSON.stringify({
+      today: isoOf(todayNum()), plan: st.phase === 'steady' ? 'Card paid off' : 'Paying down card', rules: st.rules,
+      accounts: { payLandsIn: 'BMO Chequing', card: { name: 'RBC ION Visa', limit: st.card && st.card.limit, owedEnteredOn: st.card && st.card.asOf, owedThen: st.card && st.card.balance, paidSinceViaThisPage: cardPaidSince() }, bills: 'KOHO', savings: { name: 'BMO Savings', shieldTotal: savingsTotal(), goal: st.shieldGoal } },
+      nextCheque: { payday: nx.payday, expectedTakeHomeSoFar: expNet(nx), hoursSoFar: nx.expected && nx.expected.hours, splitIfExpected: expNet(nx) > 0 ? liveSplit(nx, expNet(nx)) : null },
+      latestCheque: la ? { payday: la.payday, amount: la.actual.amount, split: splitOf(la), moved: la.moved || {} } : null,
+      bills: state.bills.map(function (b) { return { name: b.name, monthlyWithTax: ENGINE.billMonthly(b), renewsDay: b.day || null, paidFrom: b.from || 'koho', status: b.status || 'active' }; }),
+      monthlyBills: monthlyBills(), payEveryDays: st.payEvery,
+      history: confirmed().slice(-6).map(function (c) { return { payday: c.payday, amount: c.actual.amount, expected: expNet(c) }; })
+    });
+  }
+  function doAsk(q) {
+    q = String(q || '').trim(); if (!q || !sampleFn || state.ask.busy) return;
+    state.ask = { busy: true, text: '', q: q, err: '' }; renderAsk();
+    askCtl = new AbortController();
+    var prompt = 'You are the budgeting helper inside "Cheque Day", a page Travis (a college student in Toronto who works part-time) uses to split each paycheque between his RBC ION Visa, KOHO (bills and spending) and BMO Savings. ' +
+      'Answer his question using only the data below. Plain, friendly words, no jargon, at most 120 words, numbers in Canadian dollars. Do the arithmetic carefully. If the data is missing something you need, say what to add on the page. You are not a financial advisor; don’t give investment advice. Don’t use markdown headings or tables; short lines or a few dashes are fine.\n\nDATA (JSON):\n' + askContext() + '\n\nQUESTION: ' + q;
+    sampleFn(prompt, { cache: false, signal: askCtl.signal, modelTier: 'default', onText: function (u) { state.ask.text = u.text; var o = document.getElementById('ask-out'); if (o) { o.hidden = false; o.className = 'answer'; o.textContent = u.text; } } })
+      .then(function (r) { state.ask.busy = false; state.ask.text = r.text + (r.truncated ? '\n\n(Cut short. Ask a narrower question.)' : ''); renderAsk(); })
+      .catch(function (e) {
+        state.ask.busy = false;
+        var c = e && e.code;
+        if (c === 'cancelled') state.ask.text = (e.text || '') + (e.text ? '\n\n(Stopped.)' : '');
+        else if (c === 'not_granted') { state.ask.err = 'Claude wasn’t allowed to answer from this page. You can allow it in the page’s permissions.'; }
+        else if (c === 'rate_limited') state.ask.err = 'You’ve hit a usage limit for now. Try again later.';
+        else state.ask.err = 'Claude couldn’t answer that just now. Try again in a moment.';
+        renderAsk();
+      });
+  }
+
+  /* ---------- history ---------- */
+  function renderHistory() {
+    var list = sortedCheques().slice().reverse(), el = $('#hist-body');
+    if (!list.length) { el.innerHTML = '<div class="empty">Your cheques will be listed here.</div>'; return; }
+    var html = '<div class="tbl-box"><table><thead><tr><th>Payday</th><th class="n">Expected</th><th class="n">Actual</th><th class="n">Card</th><th class="n">KOHO</th><th class="n">Savings</th><th>Moved</th></tr></thead><tbody>';
+    list.forEach(function (c) {
+      var has = c.actual && c.actual.amount != null, s = has ? splitOf(c) : null, mc = has ? movedCount(c) : null, en = expNet(c);
+      html += '<tr><td>' + esc(fmtWMD(dayNum(c.payday))) + '</td><td class="n">' + (en != null && en > 0 ? esc(money.format(en)) : '—') + '</td><td class="n">' + (has ? esc(money.format(c.actual.amount)) : '—') + '</td>' +
+        '<td class="n">' + (s ? esc(money.format(s.card)) : '—') + '</td><td class="n">' + (s ? esc(money.format(s.koho)) : '—') + '</td><td class="n">' + (s ? esc(money.format(s.savings)) : '—') + '</td>' +
+        '<td>' + (has ? (mc.n === mc.tot ? chip('All', 'c-good') : chip(mc.n + ' of ' + mc.tot, 'c-warn')) : chip(dayNum(c.payday) >= todayNum() ? 'Upcoming' : 'Not confirmed', 'c-muted')) + '</td></tr>';
+    });
+    el.innerHTML = html + '</tbody></table></div>';
+  }
+
+  /* ---------- banners + footer ---------- */
+  function renderBanners() {
+    var h = '';
+    if (state.mode === 'local') h += '<div class="banner warn"><p><strong>Example numbers.</strong> This preview isn’t connected to your data. Open Cheque Day from your Claude artifacts to see your own cheques.</p></div>';
+    if (state.mode === 'snapshot') {
+      if (!state.site) h += '<div class="banner"><p>View-only copy, updated by Claude up to 5 times a day.</p></div>';
+      else if (!siteToken()) h += '<div class="banner"><p>View-only on this device. Editing uses the same GitHub key as your SafeWalk site; turn it on there or paste it here.</p><form class="row" data-form="site-key" style="flex:1 1 100%"><label class="field" style="flex:1 1 240px"><span>GitHub key</span><input id="gh-key" type="password" autocomplete="off"></label><button class="btn btn-quiet" type="submit">Turn on editing</button></form></div>';
+      else h += '<div class="banner"><p>Edits on this site are saved to your GitHub repo, then copied into the Claude app at the next check (up to 5 times a day).' + (state.sitePending ? ' ' + state.sitePending + ' edit' + (state.sitePending === 1 ? '' : 's') + ' waiting.' : '') + '</p><button class="link" type="button" data-action="site-off">Turn off editing here</button></div>';
+    }
+    $('#banners').innerHTML = h;
+  }
+  function renderFoot() {
+    var st = state.settings, h = '<p>Expected cheques come from your SafeWalk Shifts & Pay app, using the same pay math (your rate, 4% vacation pay, CPP, EI and tax).' + (st.lastSync ? ' Last updated ' + esc(fmtStamp(st.lastSync)) + '.' : '') + '</p>';
+    if (state.mode === 'snapshot' && state.builtAt) h += '<p>This copy was built ' + esc(fmtStamp(state.builtAt)) + '.</p>';
+    h += '<p>Bank transfers can take 1–3 business days. Amounts with HST are estimates until the bill posts.</p>';
+    $('#foot').innerHTML = h;
+  }
+
+  function render() {
+    renderHero(); renderBanners(); renderTodo(); renderExpected(); renderActual(); renderAccounts(); renderBills();
+    var ae = document.activeElement; if (!(ae && ae.closest && ae.closest('#planner'))) { state.plan = state.plan && state.planTouched ? state.plan : planDefaults(); renderPlannerControls(); }
+    renderGoals(); renderAsk(); renderHistory(); renderFoot(); drawGuilloche();
+  }
+
+  /* ---------- guilloche (security-paper pattern behind the amount) ---------- */
+  var gTimer = null;
+  function drawGuilloche() {
+    var cv = document.getElementById('guilloche'); if (!cv) return;
+    var r = cv.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
+    if (!r.width) return;
+    if (cv._w === r.width && cv._h === r.height && cv._c === getComputedStyle(document.documentElement).getPropertyValue('--guilloche')) return;
+    cv._w = r.width; cv._h = r.height; cv._c = getComputedStyle(document.documentElement).getPropertyValue('--guilloche');
+    cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+    var ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, r.width, r.height);
+    ctx.strokeStyle = cv._c.trim() || 'rgba(15,76,110,0.1)'; ctx.lineWidth = 0.7;
+    var cx = r.width * 0.78, cy = r.height * 0.42, R = Math.min(r.height * 0.62, 260);
+    for (var k = 0; k < 18; k++) {
+      ctx.beginPath();
+      for (var i = 0; i <= 720; i++) {
+        var t = i / 720 * Math.PI * 2, rr = R * (0.72 + 0.16 * Math.sin(9 * t + k * 0.35) + 0.06 * Math.cos(23 * t - k * 0.2)) * (0.6 + k * 0.024);
+        var x = cx + rr * Math.cos(t), y = cy + rr * Math.sin(t) * 0.82;
+        if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+      }
+      ctx.stroke();
+    }
+    for (var j = 0; j < 10; j++) {
+      ctx.beginPath();
+      for (var x2 = 0; x2 <= r.width; x2 += 3) { var y2 = r.height - 18 - j * 5 + 6 * Math.sin(x2 / 22 + j * 0.6); if (x2) ctx.lineTo(x2, y2); else ctx.moveTo(x2, y2); }
+      ctx.stroke();
+    }
+  }
+  window.addEventListener('resize', function () { clearTimeout(gTimer); gTimer = setTimeout(drawGuilloche, 150); });
+  try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () { var cv = document.getElementById('guilloche'); if (cv) cv._c = null; drawGuilloche(); }); } catch (e) {}
+  try { new MutationObserver(function () { var cv = document.getElementById('guilloche'); if (cv) cv._c = null; drawGuilloche(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] }); } catch (e) {}
+
+  /* ---------- toast ---------- */
+  var tTimer = null;
+  function toast(msg, bad) { var s = $('#toast-slot'); s.innerHTML = '<div class="toast' + (bad ? ' bad' : '') + '" role="status">' + esc(msg) + '</div>'; clearTimeout(tTimer); tTimer = setTimeout(function () { s.innerHTML = ''; }, bad ? 6000 : 2800); }
+
+  /* ---------- private site (GitHub): edits saved as encrypted operations, copied into the app by Claude ---------- */
+  var TOKEN_KEY = 'safewalk-gh-key';
+  function siteToken() { try { return localStorage.getItem(TOKEN_KEY) || ''; } catch (e) { return ''; } }
+  function canWrite() { if (state.mode === 'db' || state.mode === 'local') return true; return state.mode === 'snapshot' && !!state.site && !!siteToken(); }
+  function b64ToBytes(s) { var bin = atob(s), out = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out; }
+  function bytesToB64(u8) { var s = ''; for (var i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
+  function siteKey() { return crypto.subtle.importKey('raw', b64ToBytes(state.site.key), 'AES-GCM', false, ['encrypt', 'decrypt']); }
+  function sealOps(ops) { var iv = crypto.getRandomValues(new Uint8Array(12)); return siteKey().then(function (k) { return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, k, new TextEncoder().encode(JSON.stringify({ ops: ops }))); }).then(function (ct) { return { v: 1, iv: bytesToB64(iv), ct: bytesToB64(new Uint8Array(ct)) }; }); }
+  function openOps(box) { return siteKey().then(function (k) { return crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64ToBytes(box.iv) }, k, b64ToBytes(box.ct)); }).then(function (pt) { var o = JSON.parse(new TextDecoder().decode(pt)); return Array.isArray(o.ops) ? o.ops : []; }); }
+  function siteErr(m) { var e = new Error(m); e.site = true; return e; }
+  function ghFetch(method, body, token) {
+    var S = state.site, url = 'https://api.github.com/repos/' + S.repo + '/contents/' + S.path + (method === 'GET' ? '?ref=' + encodeURIComponent(S.branch || 'main') : '');
+    var h = { Accept: 'application/vnd.github+json' }, tk = token == null ? siteToken() : token;
+    if (tk) h.Authorization = 'Bearer ' + tk; if (body) h['Content-Type'] = 'application/json';
+    return fetch(url, { method: method, headers: h, body: body ? JSON.stringify(body) : undefined, cache: 'no-store' });
+  }
+  function readRemote() {
+    return ghFetch('GET').then(function (r) {
+      if (r.status === 404) return { sha: null, ops: [] };
+      if (r.status === 401) throw siteErr('GitHub didn’t accept this device’s key. Turn editing off and on again with a new key.');
+      if (!r.ok) throw siteErr('Couldn’t reach GitHub (error ' + r.status + '). Try again in a minute.');
+      return r.json().then(function (j) { var box = JSON.parse(atob(String(j.content || '').replace(/\s/g, ''))); return openOps(box).then(function (ops) { return { sha: j.sha, ops: ops }; }); });
+    });
+  }
+  function pushOps(newOps, tries) {
+    tries = tries || 0;
+    return readRemote().then(function (cur) {
+      var have = {}; cur.ops.forEach(function (o) { have[o.id] = 1; });
+      var all = cur.ops.concat(newOps.filter(function (o) { return !have[o.id]; }));
+      return sealOps(all).then(function (box) { var body = { message: 'Budget edit from private site', content: btoa(JSON.stringify(box)), branch: state.site.branch || 'main' }; if (cur.sha) body.sha = cur.sha; return ghFetch('PUT', body); })
+        .then(function (r) {
+          if (r.ok) { state.sitePending = all.length; return all; }
+          if ((r.status === 409 || r.status === 422) && tries < 3) return pushOps(newOps, tries + 1);
+          if (r.status === 401 || r.status === 403 || r.status === 404) throw siteErr('GitHub didn’t accept this device’s key, so nothing was saved.');
+          throw siteErr('Couldn’t save to GitHub (error ' + r.status + '). Nothing was changed.');
+        });
+    });
+  }
+  function applyOp(op) {
+    var d = op.data || {}, id = op.docId, i;
+    switch (op.type) {
+      case 'cheque.patch': i = state.cheques.findIndex(function (c) { return c.payday === id; }); if (i >= 0) state.cheques[i] = deepMerge(state.cheques[i], d); else state.cheques.push(deepMerge({ payday: id }, d)); break;
+      case 'bill.set': i = state.bills.findIndex(function (b) { return b.id === id; }); if (i >= 0) state.bills[i] = Object.assign({ id: id }, d); else state.bills.push(Object.assign({ id: id }, d)); break;
+      case 'bill.del': state.bills = state.bills.filter(function (b) { return b.id !== id; }); break;
+      case 'settings.patch': state.settings = deepMerge(state.settings, d); break;
+    }
+  }
+  function siteOp(type, docId, data) {
+    var op = { id: 'op' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7), at: new Date().toISOString(), type: type, docId: docId, data: data == null ? null : JSON.parse(JSON.stringify(data)) };
+    applyOp(op); render();
+    return pushOps([op]).then(function () { renderBanners(); });
+  }
+  function loadSiteEdits() {
+    if (!state.site || !siteToken()) return;
+    readRemote().then(function (cur) { cur.ops.forEach(applyOp); state.sitePending = cur.ops.length; render(); }).catch(function (e) { toast(e && e.site ? e.message : 'Couldn’t check GitHub for your latest edits.', true); });
+  }
+
+  /* ---------- store ---------- */
+  var store = {
+    patchCheque: function (id, patch) {
+      if (refs) { var ref = refs.cheques.doc(id), ex = state.cheques.some(function (c) { return c.payday === id && !c.synthetic; }); return ex ? ref.update(patch) : ref.set(deepMerge({ payday: id }, patch)); }
+      if (state.mode === 'snapshot') return siteOp('cheque.patch', id, patch);
+      applyOp({ type: 'cheque.patch', docId: id, data: patch }); render(); return Promise.resolve();
+    },
+    setBill: function (id, data) { if (refs) return refs.bills.doc(id).set(data); if (state.mode === 'snapshot') return siteOp('bill.set', id, data); applyOp({ type: 'bill.set', docId: id, data: data }); render(); return Promise.resolve(); },
+    delBill: function (id) { if (refs) return refs.bills.doc(id).delete(); if (state.mode === 'snapshot') return siteOp('bill.del', id, null); applyOp({ type: 'bill.del', docId: id }); render(); return Promise.resolve(); },
+    patchSettings: function (patch) { if (refs) return state.baseExists ? refs.base.update(patch) : refs.base.set(deepMerge(state.settings, patch)); if (state.mode === 'snapshot') return siteOp('settings.patch', 'budget', patch); applyOp({ type: 'settings.patch', data: patch }); render(); return Promise.resolve(); }
+  };
+  var busy = false;
+  function write(fn, ok) {
+    if (busy) return; busy = true;
+    Promise.resolve().then(fn).then(function () { busy = false; if (ok) toast(ok); }).catch(function (e) {
+      busy = false;
+      var msg = e && e.site ? e.message : (e && e.code === 'invalid_argument' ? 'This view can’t save changes.' : (e && (e.code === 'permission_denied' || e.code === 'not_granted') ? 'You don’t have permission to change this page.' : 'Couldn’t save that. Check your connection and try again.'));
+      toast(msg, true);
+    });
+  }
+
+  /* ---------- events ---------- */
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-action], [data-jump]'); if (!t) return;
+    if (t.hasAttribute('data-jump')) { var sec = document.getElementById(t.getAttribute('data-jump')); if (sec) sec.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }); return; }
+    var a = t.getAttribute('data-action'), id = t.getAttribute('data-id');
+    switch (a) {
+      case 'jump': var s2 = document.getElementById(t.getAttribute('data-v')); if (s2) s2.scrollIntoView({ behavior: 'smooth', block: 'start' }); break;
+      case 'confirm-early': state.confirmFor = id; state.draftAmt = ''; renderTodo(); var ci = $('#conf-amt'); if (ci) ci.focus(); break;
+      case 'confirm-cancel': state.confirmFor = null; state.draftAmt = ''; renderTodo(); break;
+      case 'reconfirm': state.confirmFor = null; var la = latestActual(); if (la) { state.reconfirm = la.payday; } renderReconfirm(); break;
+      case 'confirm': {
+        var v = parseFloat(($('#conf-amt') || {}).value);
+        if (!(v > 0)) { toast('Enter the amount Dayforce shows, for example 803.38.', true); return; }
+        var nx = nextCheque(), c = state.cheques.filter(function (x) { return x.payday === id; })[0] || nx;
+        var sp = ENGINE.compute(state.settings, state.bills, v, dayNum(id));
+        var patch = { payday: id, actual: { amount: r2(v), confirmedAt: new Date().toISOString(), by: state.mode === 'snapshot' ? 'you (private site)' : 'you' }, split: sp, moved: { card: null, koho: null, savings: null } };
+        if (!c.periodStart && c.expected) { patch.periodStart = c.expected.periodStart; patch.periodEnd = c.expected.periodEnd; }
+        state.confirmFor = null; state.draftAmt = ''; state.actualPick = id;
+        write(function () { return store.patchCheque(id, patch); }, 'Cheque confirmed. Here’s your split.');
+        setTimeout(function () { var el = document.getElementById('todo'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 120);
+        break;
+      }
+      case 'move': {
+        var k = t.getAttribute('data-k'), ch = state.cheques.filter(function (x) { return x.payday === id; })[0]; if (!ch) return;
+        var on = !(ch.moved && ch.moved[k]), p = { moved: {} }; p.moved[k] = on ? new Date().toISOString() : null;
+        write(function () { return store.patchCheque(id, p); }, on ? 'Marked as sent' : 'Marked as not sent');
+        break;
+      }
+      case 'pick-actual': state.actualPick = id; renderActual(); break;
+      case 'acct': { var kk = t.getAttribute('data-k'); state.open[kk] = !state.open[kk]; renderAccounts(); break; }
+      case 'koho-bills': state.showKohoBills = !state.showKohoBills; state.open.koho = true; renderAccounts(); break;
+      case 'bill-add': state.editBill = 'new'; state.confirmDel = null; renderBills(); var bi = document.getElementById('bf-name-new'); if (bi) bi.focus(); break;
+      case 'bill-edit': state.editBill = id; state.confirmDel = null; renderBills(); break;
+      case 'bill-cancel': state.editBill = null; state.confirmDel = null; renderBills(); break;
+      case 'bill-del': state.confirmDel = id; renderBills(); break;
+      case 'bill-del-no': state.confirmDel = null; renderBills(); break;
+      case 'bill-del-yes': state.editBill = null; state.confirmDel = null; write(function () { return store.delBill(id); }, 'Bill deleted'); break;
+      case 'plan-phase': state.plan = state.plan || planDefaults(); state.plan.phase = t.getAttribute('data-v'); state.planTouched = true; renderPlannerControls(); break;
+      case 'plan-reset': state.plan = planDefaults(); state.planTouched = false; renderPlannerControls(); break;
+      case 'plan-save': {
+        var p2 = state.plan, rules = deepMerge(DEFAULTS.rules, state.settings.rules || {});
+        if (p2.phase === 'paydown') rules.paydown = { cardPct: p2.cardPct, savingsFixed: p2.savingsFixed }; else rules.steady = { cardMonthly: p2.cardMonthly, savingsPct: p2.savingsPct };
+        state.planTouched = false;
+        write(function () { return store.patchSettings({ phase: p2.phase, rules: rules }); }, 'Saved. New cheques use these rules.');
+        break;
+      }
+      case 'set-phase': write(function () { return store.patchSettings({ phase: t.getAttribute('data-v') }); }, 'Plan switched'); break;
+      case 'ask-chip': { var q = ASKS[Number(t.getAttribute('data-i'))]; state.ask.q = q; doAsk(q); break; }
+      case 'ask-stop': if (askCtl) askCtl.abort(); break;
+      case 'site-off': try { localStorage.removeItem(TOKEN_KEY); } catch (er) {} render(); toast('Editing turned off on this device'); break;
+      case 'reconf-save': {
+        var v2 = parseFloat(($('#reconf-amt') || {}).value), pid = state.reconfirm; if (!(v2 > 0) || !pid) { toast('Enter the right amount.', true); return; }
+        var sp2 = ENGINE.compute(state.settings, state.bills, v2, dayNum(pid)), cc = state.cheques.filter(function (x) { return x.payday === pid; })[0];
+        state.reconfirm = null;
+        write(function () { return store.patchCheque(pid, { actual: { amount: r2(v2), confirmedAt: (cc && cc.actual && cc.actual.confirmedAt) || new Date().toISOString(), fixedAt: new Date().toISOString() }, split: sp2 }); }, 'Amount fixed and split redone');
+        break;
+      }
+      case 'reconf-cancel': state.reconfirm = null; renderTodo(); break;
+    }
+  });
+  function renderReconfirm() {
+    renderTodo(); var pid = state.reconfirm; if (!pid) return;
+    var c = state.cheques.filter(function (x) { return x.payday === pid; })[0]; if (!c) return;
+    var box = document.createElement('div'); box.className = 'confirm-box';
+    box.innerHTML = '<p>Fix the amount for <b>' + esc(fmtWMD(dayNum(pid))) + '</b>. The split is redone with your current rules; ticks you’ve made stay.</p><div class="row"><label class="field money-in" style="flex:1 1 180px"><span>Correct amount</span><input id="reconf-amt" type="number" step="0.01" min="0" inputmode="decimal" value="' + esc(c.actual.amount) + '"></label><button class="btn btn-primary" type="button" data-action="reconf-save">Save</button><button class="link" type="button" data-action="reconf-cancel">Cancel</button></div>';
+    $('#todo').appendChild(box); var i = $('#reconf-amt'); if (i) i.focus();
+  }
+  document.addEventListener('input', function (e) {
+    var t = e.target;
+    if (t.id === 'conf-amt') { state.draftAmt = t.value; updateConfirmPreview(); }
+    if (t.id === 'ask-q') state.ask.q = t.value;
+    if (t.id === 'pl-amount' || t.id === 'pl-card' || t.id === 'pl-save') {
+      var p = state.plan || (state.plan = planDefaults()); state.planTouched = true;
+      if (t.id === 'pl-amount') { p.amount = Number(t.value); $('#pl-amount-v').textContent = money0.format(p.amount); }
+      if (t.id === 'pl-card') { if (p.phase === 'paydown') { p.cardPct = Number(t.value); $('#pl-card-v').textContent = p.cardPct + '%'; } else { p.cardMonthly = Number(t.value); $('#pl-card-v').textContent = money0.format(p.cardMonthly); } }
+      if (t.id === 'pl-save') { if (p.phase === 'paydown') { p.savingsFixed = Number(t.value); $('#pl-save-v').textContent = money0.format(p.savingsFixed); } else { p.savingsPct = Number(t.value); $('#pl-save-v').textContent = p.savingsPct + '%'; } }
+      renderPlannerResult();
+    }
+  });
+  document.addEventListener('submit', function (e) {
+    var f = e.target; e.preventDefault();
+    if (f.hasAttribute('data-bill-form')) {
+      var id = f.getAttribute('data-bill-form'), fd = new FormData(f), name = String(fd.get('name') || '').trim();
+      if (!name) { toast('Give the bill a name.', true); return; }
+      var amt = String(fd.get('amount') || '').trim(), day = String(fd.get('day') || '').trim();
+      var data = { name: name, amount: amt === '' ? null : r2(parseFloat(amt)), taxPct: Number(fd.get('taxPct')) || 0, day: day === '' ? null : Math.max(1, Math.min(31, parseInt(day, 10))), from: fd.get('from') === 'card' ? 'card' : 'koho', status: String(fd.get('status') || 'active') };
+      var old = state.bills.filter(function (b) { return b.id === id; })[0]; if (old && old.note) data.note = old.note; if (old && old.order != null) data.order = old.order;
+      var nid = id === 'new' ? rid() : id; state.editBill = null;
+      write(function () { return store.setBill(nid, data); }, 'Bill saved');
+      return;
+    }
+    var kind = f.getAttribute('data-form');
+    if (kind === 'card') {
+      var lim = parseFloat(f.limit.value), bal = parseFloat(f.balance.value);
+      write(function () { return store.patchSettings({ card: { limit: lim > 0 ? r2(lim) : null, balance: bal >= 0 ? r2(bal) : null, asOf: isoOf(todayNum()) } }); }, 'Card saved');
+    }
+    if (kind === 'shield') {
+      var st0 = parseFloat(f.start.value), g = parseFloat(f.goal.value);
+      write(function () { return store.patchSettings({ savingsStart: st0 >= 0 ? r2(st0) : 0, savingsAsOf: isoOf(todayNum()), shieldGoal: g > 0 ? r2(g) : 1000 }); }, 'Shield saved');
+    }
+    if (kind === 'ask') doAsk(($('#ask-q') || {}).value);
+    if (kind === 'site-key') {
+      var tk = String(($('#gh-key') || {}).value || '').trim(); if (!tk) return;
+      fetch('https://api.github.com/repos/' + state.site.repo, { headers: { Accept: 'application/vnd.github+json', Authorization: 'Bearer ' + tk }, cache: 'no-store' })
+        .then(function (r) { if (!r.ok) throw new Error('bad'); try { localStorage.setItem(TOKEN_KEY, tk); } catch (er) { toast('This browser won’t let the page remember the key (private browsing?).', true); return; } toast('Editing is on for this device'); render(); loadSiteEdits(); })
+        .catch(function () { toast('GitHub didn’t accept that key. Make sure it can read and write the safewalk-pay repo.', true); });
+    }
+  });
+
+  /* ---------- example data (preview only; never the user's own numbers) ---------- */
+  function exampleData() {
+    var t = todayNum(), pd = ENGINE.paydayAfter(DEFAULTS, t), prev = pd - 14;
+    var bills = [
+      { id: 'ex1', name: 'Phone plan (example)', amount: 75, taxPct: 0, day: 8, from: 'koho', status: 'active' },
+      { id: 'ex2', name: 'Music (example)', amount: 5.99, taxPct: 13, day: 18, from: 'koho', status: 'active' },
+      { id: 'ex3', name: 'Cloud storage (example)', amount: 3.99, taxPct: 13, day: 18, from: 'koho', status: 'active' },
+      { id: 'ex4', name: 'Streaming (example)', amount: 10.99, taxPct: 13, day: null, from: 'koho', status: 'cancelling' }
+    ];
+    var st = deepMerge(DEFAULTS, {});
+    var s = ENGINE.compute(st, bills, 780, prev);
+    return { settings: st, bills: bills, cheques: [
+      { payday: isoOf(prev), periodStart: isoOf(prev - 22), periodEnd: isoOf(prev - 9), expected: { net: 760, hours: 44, shiftCount: 10, periodStart: isoOf(prev - 22), periodEnd: isoOf(prev - 9) }, actual: { amount: 780, confirmedAt: new Date().toISOString() }, split: s, moved: { card: new Date().toISOString(), koho: null, savings: null } },
+      { payday: isoOf(pd), periodStart: isoOf(pd - 22), periodEnd: isoOf(pd - 9), expected: { net: 640, hours: 36, shiftCount: 8, periodStart: isoOf(pd - 22), periodEnd: isoOf(pd - 9), partial: true } }
+    ] };
+  }
+
+  /* ---------- boot ---------- */
+  function waitForClaude() { return new Promise(function (resolve) { var n = 0; (function check() { if (window.claude && typeof window.claude.use === 'function') return resolve(window.claude); if (++n > 40) return resolve(null); setTimeout(check, 100); })(); }); }
+  function goLocal() { var ex = exampleData(); state.mode = 'local'; state.settings = ex.settings; state.bills = ex.bills; state.cheques = ex.cheques; state.loaded = true; render(); }
+  function boot() {
+    var SNAP = window.BUDGET_SNAPSHOT;
+    if (SNAP) {
+      state.mode = 'snapshot'; state.builtAt = SNAP.builtAt || '';
+      state.settings = deepMerge(DEFAULTS, SNAP.settings || {}); state.cheques = (SNAP.cheques || []).slice(); state.bills = (SNAP.bills || []).slice();
+      state.site = SNAP.sync && SNAP.sync.repo && SNAP.sync.key ? SNAP.sync : null; state.loaded = true;
+      render(); loadSiteEdits(); return;
+    }
+    render();
+    waitForClaude().then(function (c) {
+      if (!c) return goLocal();
+      c.use('sample').then(function (s) { sampleFn = s || null; renderAsk(); }).catch(function () { sampleFn = null; });
+      return Promise.all([c.use('db'), c.use('user')]).then(function (r) {
+        var db = r[0], user = r[1]; if (!db || !user) return goLocal();
+        return user.id().then(function (uid) {
+          if (!uid) return goLocal();
+          var base = db.doc('data/users/' + uid + '/budget');
+          refs = { base: base, cheques: base.collection('cheques'), bills: base.collection('bills') };
+          state.mode = 'db';
+          var got = { b: false, c: false, l: false }, timer = setTimeout(function () { if (!state.loaded) { state.loaded = true; render(); toast('Your budget is taking a while to load. It will appear when it’s ready.', true); } }, 10000);
+          function ready() { if (got.b && got.c && got.l) { state.loaded = true; clearTimeout(timer); } render(); }
+          function err() { clearTimeout(timer); toast('Lost the connection to your budget. Reload the page to reconnect.', true); }
+          base.onSnapshot(function (snap) { state.baseExists = snap.exists; state.settings = deepMerge(DEFAULTS, snap.exists ? snap.data() : {}); got.b = true; ready(); }, err);
+          refs.cheques.onSnapshot(function (snap) { state.cheques = snap.docs.map(function (d) { return Object.assign({ payday: d.id }, d.data()); }); got.c = true; ready(); }, err);
+          refs.bills.onSnapshot(function (snap) { state.bills = snap.docs.map(function (d) { return Object.assign({ id: d.id }, d.data()); }); got.l = true; ready(); }, err);
+        });
+      });
+    }).catch(function () { goLocal(); });
+    setInterval(function () { var a = document.activeElement; if (!a || !a.closest || !a.closest('form, #todo, #planner, #ask')) renderHero(); }, 60000);
+  }
+  window.__CHEQUE_ENGINE = ENGINE;
+  boot();
+})();
+</script>
