@@ -8,7 +8,7 @@
 :root {
   --paper: #EBF2EC; --surface: #FFFFFF; --surface-2: #F3F8F4; --ink: #0F2119; --muted: #55685D; --line: #D3DFD6;
   --accent: #0F4C6E; --on-accent: #FFFFFF; --focus: #1D6FA3;
-  --c-chq: #0F4C6E; --c-card: #2F55D4; --c-koho: #7646D6; --c-save: #12855A; --c-bill: #B86E12; --c-spend: #A27BE8;
+  --c-chq: #0F4C6E; --c-card: #2F55D4; --c-koho: #7646D6; --c-td: #0B7A6F; --c-save: #12855A; --c-bill: #B86E12; --c-spend: #A27BE8;
   --good: #11744C; --good-bg: #DCF1E5; --warn: #9A4A09; --warn-bg: #FBEBD9; --bad: #B42318; --bad-bg: #FCE6E3; --info-bg: #E2EEF5;
   --guilloche: rgba(15, 76, 110, 0.10);
   --f-display: "Bricolage Grotesque", "Arial Narrow", "Helvetica Neue", sans-serif;
@@ -19,7 +19,7 @@
   :root:not([data-theme="light"]) {
     --paper: #0A1410; --surface: #111D18; --surface-2: #17261F; --ink: #E3EEE7; --muted: #94A89C; --line: #24362D;
     --accent: #86C9EC; --on-accent: #06131B; --focus: #9FD6F2;
-    --c-chq: #86C9EC; --c-card: #8AA4FF; --c-koho: #B795FF; --c-save: #55D49C; --c-bill: #F0B25E; --c-spend: #D3BCFF;
+    --c-chq: #86C9EC; --c-card: #8AA4FF; --c-koho: #B795FF; --c-td: #5ED3C4; --c-save: #55D49C; --c-bill: #F0B25E; --c-spend: #D3BCFF;
     --good: #61D6A0; --good-bg: #123024; --warn: #F5AE6B; --warn-bg: #3A2513; --bad: #FF8E83; --bad-bg: #3D1714; --info-bg: #13283A;
     --guilloche: rgba(134, 201, 236, 0.09);
     color-scheme: dark;
@@ -28,7 +28,7 @@
 :root[data-theme="dark"] {
   --paper: #0A1410; --surface: #111D18; --surface-2: #17261F; --ink: #E3EEE7; --muted: #94A89C; --line: #24362D;
   --accent: #86C9EC; --on-accent: #06131B; --focus: #9FD6F2;
-  --c-chq: #86C9EC; --c-card: #8AA4FF; --c-koho: #B795FF; --c-save: #55D49C; --c-bill: #F0B25E; --c-spend: #D3BCFF;
+  --c-chq: #86C9EC; --c-card: #8AA4FF; --c-koho: #B795FF; --c-td: #5ED3C4; --c-save: #55D49C; --c-bill: #F0B25E; --c-spend: #D3BCFF;
   --good: #61D6A0; --good-bg: #123024; --warn: #F5AE6B; --warn-bg: #3A2513; --bad: #FF8E83; --bad-bg: #3D1714; --info-bg: #13283A;
   --guilloche: rgba(134, 201, 236, 0.09);
   color-scheme: dark;
@@ -318,8 +318,11 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
     <div class="cols">
       <div style="display:grid;gap:14px">
         <div class="slider"><div class="top"><label for="pl-amount">Cheque amount</label><b id="pl-amount-v"></b></div><input type="range" id="pl-amount" min="200" max="1600" step="5"></div>
-        <div class="slider" id="pl-card-wrap"><div class="top"><label for="pl-card" id="pl-card-l">To RBC ION Visa</label><b id="pl-card-v"></b></div><input type="range" id="pl-card"></div>
-        <div class="slider"><div class="top"><label for="pl-save" id="pl-save-l">To BMO Savings</label><b id="pl-save-v"></b></div><input type="range" id="pl-save"></div>
+        <div class="slider"><div class="top"><label for="pl-td" id="pl-td-l">To TD (fixed bills)</label><b id="pl-td-v"></b></div><input type="range" id="pl-td" min="0" max="40" step="1"></div>
+        <div class="slider"><div class="top"><label for="pl-koho" id="pl-koho-l">To KOHO (subscriptions)</label><b id="pl-koho-v"></b></div><input type="range" id="pl-koho" min="0" max="20" step="1"></div>
+        <div class="slider" id="pl-card-wrap"><div class="top"><label for="pl-card" id="pl-card-l">To RBC ION Visa</label><b id="pl-card-v"></b></div><input type="range" id="pl-card" min="0" max="60" step="1"></div>
+        <div class="slider"><div class="top"><label for="pl-save" id="pl-save-l">To BMO Savings</label><b id="pl-save-v"></b></div><input type="range" id="pl-save" min="0" max="80" step="1"></div>
+        <p class="small muted" id="pl-left"></p>
         <div class="row"><button class="btn btn-primary" type="button" data-action="plan-save" id="pl-save-btn">Use these as my rules</button><button class="link" type="button" data-action="plan-reset">Reset to my rules</button></div>
       </div>
       <div class="res" id="pl-res" aria-live="polite"></div>
@@ -371,19 +374,22 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
   function rid() { return 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
   var ACCT = {
-    chq: { name: 'BMO Chequing', short: 'BMO Chequing', color: 'var(--c-chq)', role: 'Your pay lands here' },
+    chq: { name: 'BMO Chequing', short: 'BMO Chequing', color: 'var(--c-chq)', role: 'Pay lands here · your spending money' },
     card: { name: 'RBC ION Visa', short: 'RBC ION Visa', color: 'var(--c-card)', role: 'Paying down the card' },
-    koho: { name: 'KOHO', short: 'KOHO', color: 'var(--c-koho)', role: 'Bills and spending' },
+    td: { name: 'TD', short: 'TD', color: 'var(--c-td)', role: 'Fixed bills (phone)' },
+    koho: { name: 'KOHO', short: 'KOHO', color: 'var(--c-koho)', role: 'Subscriptions' },
     savings: { name: 'BMO Savings', short: 'BMO Savings', color: 'var(--c-save)', role: 'Your savings shield' }
   };
   var HOW = {
     card: 'In the BMO app: Pay bills → RBC Visa. Can take 1–3 business days to land.',
+    td: 'Interac e-Transfer from BMO to your TD account. Your phone bill comes out of TD.',
     koho: 'Interac e-Transfer to your KOHO account, or KOHO as a bill payee in BMO.',
     savings: 'BMO app: Transfer between your own accounts. Lands right away.'
   };
   var DEFAULTS = {
     phase: 'paydown',
-    rules: { paydown: { cardPct: 50, savingsFixed: 150 }, steady: { cardMonthly: 250, savingsPct: 40 } },
+    rules: { paydown: { cardPct: 50, savingsFixed: 150 }, steady: { cardMonthly: 250, savingsPct: 40 },
+      pct: { tdPct: 13, tdMin: 102, kohoPct: 5, kohoMin: 35, cardPct: 25, savingsPct: 17 } },
     card: { limit: null, balance: null, asOf: '' },
     savingsStart: 0, savingsAsOf: '', shieldGoal: 1000,
     payAnchor: '2026-11-20', payEvery: 14,
@@ -392,7 +398,7 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
 
   var state = {
     mode: 'loading', loaded: false, settings: deepMerge(DEFAULTS, {}), cheques: [], bills: [], site: null, sitePending: 0,
-    open: {}, showKohoBills: false, editBill: null, confirmDel: null, confirmFor: null, draftAmt: '', actualPick: null,
+    open: {}, showBills: {}, editBill: null, confirmDel: null, confirmFor: null, draftAmt: '', actualPick: null,
     plan: null, ask: { busy: false, text: '', q: '', err: '' }, animated: {}, builtAt: ''
   };
   var refs = null, sampleFn = null;
@@ -419,45 +425,39 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
       out.sort(function (x, y) { return (x.day == null ? 1e9 : x.day) - (y.day == null ? 1e9 : y.day); });
       return out;
     }
+    /* Split by percentages: TD (fixed bills) and KOHO (subscriptions) come first and never get less than their minimum
+       or the bills due before the next cheque; then the card and savings shares; BMO Chequing keeps the rest to spend.
+       Once the card is paid off ("steady"), the card's share goes to savings. */
     function compute(st, bills, amount, payday, override) {
       amount = r2(Math.max(0, Number(amount) || 0));
       var every = Number(st.payEvery) || 14, phase = (override && override.phase) || st.phase || 'paydown';
       var rules = deepMerge(DEFAULTS.rules, st.rules || {}); if (override && override.rules) rules = deepMerge(rules, override.rules);
-      var start = payday, end = payday + every - 1, notes = [];
-      var kohoBills = billsInWindow(bills, 'koho', start, end), cardBills = billsInWindow(bills, 'card', start, end);
-      var billTotal = r2(kohoBills.reduce(function (a, b) { return a + b.amount; }, 0));
-      var cardBillTotal = r2(cardBills.reduce(function (a, b) { return a + b.amount; }, 0));
-      var card = 0, savings = 0, koho = 0;
-      if (phase === 'steady') {
-        var first = isFirstOfMonth(payday, every);
-        card = first ? Math.min(r2(rules.steady.cardMonthly), amount) : 0;
-        if (!first) notes.push('Your card gets its monthly payment from the first cheque of the month, so this one skips it.');
-        var rest = r2(amount - card);
-        savings = r2(rest * (Number(rules.steady.savingsPct) || 0) / 100);
-        koho = r2(rest - savings);
-      } else {
-        card = r2(amount * (Number(rules.paydown.cardPct) || 0) / 100);
-        var bal = st.card && st.card.balance != null && st.card.balance !== '' ? Number(st.card.balance) : null, extra = 0;
-        if (bal != null && !isNaN(bal)) {
-          var cap = r2(Math.max(0, bal) + cardBillTotal);
-          if (card > cap) { extra = r2(card - cap); card = cap; notes.push('Your card only needs ' + money.format(cap) + ', so the extra ' + money.format(extra) + ' goes to savings.'); }
-        }
-        savings = r2(Math.min(Number(rules.paydown.savingsFixed) || 0, Math.max(0, amount - card)) + extra);
-        koho = r2(amount - card - savings);
+      var P = rules.pct, start = payday, end = payday + every - 1, notes = [];
+      function pc(k) { return r2(amount * (Number(P[k]) || 0) / 100); }
+      function sum(l) { return r2(l.reduce(function (a, b) { return a + b.amount; }, 0)); }
+      var tdBills = billsInWindow(bills, 'td', start, end), kohoBills = billsInWindow(bills, 'koho', start, end), cardBills = billsInWindow(bills, 'card', start, end);
+      var tdBillTotal = sum(tdBills), kohoBillTotal = sum(kohoBills), cardBillTotal = sum(cardBills);
+      var td = Math.max(pc('tdPct'), Number(P.tdMin) || 0, tdBillTotal), koho = Math.max(pc('kohoPct'), Number(P.kohoMin) || 0, kohoBillTotal);
+      if (td > pc('tdPct') + 0.004) notes.push('TD gets ' + money.format(td) + ' (more than ' + P.tdPct + '%) so your fixed bills are covered.');
+      if (koho > pc('kohoPct') + 0.004) notes.push('KOHO gets ' + money.format(koho) + ' (more than ' + P.kohoPct + '%) so your subscriptions are covered.');
+      if (td + koho > amount) { var short = r2(td + koho - amount); notes.push('This cheque is ' + money.format(short) + ' short of your bills before the next one.'); var k2 = Math.min(koho, amount); td = r2(Math.max(0, amount - k2)); koho = r2(k2); }
+      td = r2(td); koho = r2(koho);
+      var card = phase === 'steady' ? 0 : pc('cardPct'), extra = 0;
+      if (phase !== 'steady') {
+        var bal = st.card && st.card.balance != null && st.card.balance !== '' ? Number(st.card.balance) : null;
+        if (bal != null && !isNaN(bal)) { var cap = r2(Math.max(0, bal) + cardBillTotal); if (card > cap) { extra = r2(card - cap); card = cap; notes.push('Your card only needs ' + money.format(cap) + ', so the extra ' + money.format(extra) + ' goes to savings.'); } }
       }
-      // Bills come first: if KOHO's share can't cover the bills due before the next cheque, take the gap from savings, then the card.
-      var gap = r2(billTotal - koho);
-      if (gap > 0.004) {
-        var fromSave = Math.min(gap, savings); savings = r2(savings - fromSave); koho = r2(koho + fromSave); gap = r2(gap - fromSave);
-        var fromCard = Math.min(gap, card); card = r2(card - fromCard); koho = r2(koho + fromCard); gap = r2(gap - fromCard);
-        notes.push('KOHO got ' + money.format(fromSave + fromCard) + ' more so your bills are covered' + (fromSave ? ' (taken from savings' + (fromCard ? ' and the card' : '') + ')' : ' (taken from the card)') + '.');
-        if (gap > 0.004) notes.push('This cheque is ' + money.format(gap) + ' short of your bills before the next one.');
+      var savings = r2(pc('savingsPct') + (phase === 'steady' ? pc('cardPct') : 0) + extra);
+      var chq = r2(amount - td - koho - card - savings);
+      if (chq < -0.004) {
+        var gap = -chq, fromSave = Math.min(gap, savings); savings = r2(savings - fromSave); gap = r2(gap - fromSave);
+        var fromCard = Math.min(gap, card); card = r2(card - fromCard); gap = r2(gap - fromCard);
+        notes.push('Savings' + (fromCard ? ' and the card' : '') + ' got less this time so the bills fit.');
+        chq = r2(amount - td - koho - card - savings);
       }
-      koho = r2(amount - card - savings);
-      var spend = r2(koho - billTotal);
-      return { amount: amount, payday: payday, nextPayday: payday + every, phase: phase, card: card, savings: savings, koho: koho,
-        bills: kohoBills, billTotal: billTotal, cardBills: cardBills, cardBillTotal: cardBillTotal, spend: spend, notes: notes,
-        rules: phase === 'steady' ? { cardMonthly: rules.steady.cardMonthly, savingsPct: rules.steady.savingsPct } : { cardPct: rules.paydown.cardPct, savingsFixed: rules.paydown.savingsFixed } };
+      return { mode: 'pct', amount: amount, payday: payday, nextPayday: payday + every, phase: phase, td: td, koho: koho, card: card, savings: savings, chq: chq, kept: chq, spend: chq,
+        bills: tdBills.concat(kohoBills), tdBills: tdBills, kohoBills: kohoBills, tdBillTotal: tdBillTotal, kohoBillTotal: kohoBillTotal, billTotal: r2(tdBillTotal + kohoBillTotal),
+        cardBills: cardBills, cardBillTotal: cardBillTotal, notes: notes, rules: { tdPct: P.tdPct, tdMin: P.tdMin, kohoPct: P.kohoPct, kohoMin: P.kohoMin, cardPct: P.cardPct, savingsPct: P.savingsPct } };
     }
     return { paydayAfter: paydayAfter, isFirstOfMonth: isFirstOfMonth, billMonthly: billMonthly, billsInWindow: billsInWindow, compute: compute };
   })();
@@ -483,14 +483,16 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
   function partsOf(s) {
     if (!s) return [];
     if (s.custom && Array.isArray(s.parts)) return s.parts.map(function (p) { return { key: p.key, account: p.account || 'other', name: p.name, amount: r2(p.amount), color: colorOf(p.account), detail: p.detail || '', short: p.short || '', move: p.move !== false, via: p.via || '' }; });
+    if (s.mode === 'pct') return ['td', 'koho', 'card', 'savings'].map(function (k) { return { key: k, account: k, name: ACCT[k].name, amount: r2(s[k]), color: ACCT[k].color, detail: HOW[k], short: '', move: true }; })
+      .concat([{ key: 'chq', account: 'chq', name: 'Spending money', amount: r2(s.chq), color: ACCT.chq.color, detail: 'Your spending money until ' + fmtMD(s.nextPayday - 1) + '.', short: '', move: false }]);
     return ['card', 'koho', 'savings'].map(function (k) { return { key: k, account: k, name: ACCT[k].name, amount: r2(s[k]), color: ACCT[k].color, detail: HOW[k], short: '', move: true }; });
   }
   function groupsOf(s) {
     var out = [], idx = {};
     partsOf(s).forEach(function (p) {
       if (!(p.amount > 0) || p.via) return;
-      var k = (p.account === 'card' || p.account === 'koho' || p.account === 'savings' || p.account === 'chq') ? p.account : p.key;
-      if (idx[k] == null) { idx[k] = out.length; out.push({ key: k, name: p.account === 'chq' ? 'Kept in BMO Chequing' : (k === p.account ? ACCT[k].name : p.name), amount: 0, color: p.color, pieces: [], short: p.short }); }
+      var k = (p.account === 'card' || p.account === 'koho' || p.account === 'td' || p.account === 'savings' || p.account === 'chq') ? p.account : p.key;
+      if (idx[k] == null) { idx[k] = out.length; out.push({ key: k, name: p.account === 'chq' ? (s.mode === 'pct' ? 'Spending (BMO Chequing)' : 'Kept in BMO Chequing') : (k === p.account ? ACCT[k].name : p.name), amount: 0, color: p.color, pieces: [], short: p.short }); }
       var gr = out[idx[k]]; gr.amount = r2(gr.amount + p.amount); gr.pieces.push(p.amount);
     });
     out.forEach(function (gr) { gr.sub = gr.pieces.length > 1 ? gr.pieces.map(function (v) { return money0.format(v); }).join(' + ') : gr.short; });
@@ -549,7 +551,7 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
     if (la) { var mc = movedCount(la); h += head('Money moved', mc.n + ' of ' + mc.tot, mc.n === mc.tot ? 'All moved for ' + esc(fmtMD(dayNum(la.payday))) : 'From your ' + esc(fmtMD(dayNum(la.payday))) + ' cheque', mc.n === mc.tot ? 'good' : 'warn'); }
     else h += head('Money moved', '—', 'Nothing to move yet');
     var s = la ? splitOf(la) : null;
-    if (s) h += head('Left to spend', esc(money.format(s.spend)), s.custom ? esc(s.spendNote || 'Left after this cheque') : 'In KOHO after bills, to ' + esc(fmtMD(s.nextPayday - 1)), s.spend < 0 ? 'bad' : (s.spend < 60 ? 'warn' : ''));
+    if (s) h += head('Left to spend', esc(money.format(s.spend)), s.custom ? esc(s.spendNote || 'Left after this cheque') : (s.mode === 'pct' ? 'In BMO Chequing, to ' : 'In KOHO after bills, to ') + esc(fmtMD(s.nextPayday - 1)), s.spend < 0 ? 'bad' : (s.spend < 60 ? 'warn' : ''));
     else h += head('Left to spend', '—', 'Shows after your first split');
     var sv = savingsTotal(), goal = Number(state.settings.shieldGoal) || 1000;
     h += head('Savings shield', esc(money.format(sv)), Math.round(Math.min(100, sv / goal * 100)) + '% of ' + esc(money0.format(goal)), sv > 0 ? 'good' : '');
@@ -584,7 +586,7 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
           '<div class="what"><b>' + (p.via === 'card' ? 'RBC ION Visa' : 'BMO Chequing') + ' → ' + esc(p.name) + '</b>' + (p.detail ? '<span class="small muted">' + esc(p.detail) + '</span>' : '') + '</div>' +
           '<div class="amt">' + esc(money.format(p.amount)) + '</div>' +
           '<div class="acts">' + (s.custom ? chip(done ? 'Done' : 'Not done yet', done ? 'c-good' : 'c-warn') : (canEdit ? '<button type="button" class="tick" data-action="move" data-id="' + esc(la.payday) + '" data-k="' + esc(p.key) + '" aria-pressed="' + done + '"><i>' + (done ? '✓' : '') + '</i>' + (done ? 'Sent ' + esc(fmtStamp(m[p.key])) : 'Mark as sent') + '</button>' : (done ? chip('Sent', 'c-good') : chip('Not sent yet', 'c-warn')))) +
-          (p.key === 'koho' && s.billTotal > 0 ? '<span class="small muted">' + esc(money.format(s.billTotal)) + ' of it is for bills</span>' : '') + '</div></div>';
+          (billsFor(s, p.key) > 0 ? '<span class="small muted">' + esc(money.format(billsFor(s, p.key))) + ' of it is for bills</span>' : '') + '</div></div>';
       });
       html += '</div>';
       if (s.notes && s.notes.length) html += '<div class="banner' + (s.custom ? '' : ' warn') + '"><p>' + s.notes.map(esc).join(' ') + '</p></div>';
@@ -599,12 +601,13 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
     el.innerHTML = html;
     updateConfirmPreview();
   }
+  function billsFor(s, k) { if (!s || s.custom) return 0; if (s.mode === 'pct') return k === 'td' ? s.tdBillTotal : (k === 'koho' ? s.kohoBillTotal : 0); return k === 'koho' ? s.billTotal : 0; }
   function updateConfirmPreview() {
     var inp = $('#conf-amt'), out = $('#conf-preview'); if (!inp || !out) return;
     var v = parseFloat(inp.value), nx = nextCheque();
     if (!(v > 0)) { out.textContent = 'Enter the amount to see the split.'; return; }
     var s = liveSplit(nx, v);
-    out.textContent = 'RBC ION Visa ' + money.format(s.card) + ' · KOHO ' + money.format(s.koho) + ' (' + money.format(s.billTotal) + ' for bills) · BMO Savings ' + money.format(s.savings);
+    out.textContent = 'TD ' + money.format(s.td) + ' · KOHO ' + money.format(s.koho) + ' · RBC ION Visa ' + money.format(s.card) + ' · BMO Savings ' + money.format(s.savings) + ' · left to spend ' + money.format(s.chq);
   }
 
   /* ---------- donut + money flow ---------- */
@@ -691,15 +694,18 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
       dst.forEach(function (n) { links.push({ from: 'chq', to: n.id, v: n.v, color: n.color }); });
     } else {
       var chq = { id: 'chq', name: label || 'BMO Chequing', v: r2(s.amount), color: ACCT.chq.color };
-      var acc = groupsOf(s).map(function (gr) { return { id: gr.key, name: gr.name, v: gr.amount, color: gr.color }; });
+      var acc = groupsOf(s).map(function (gr) { return { id: gr.key === 'chq' ? 'g-chq' : gr.key, name: gr.name, v: gr.amount, color: gr.color }; });
       var kids = [];
-      if (acc.some(function (n) { return n.id === 'koho'; })) {
+      if (s.mode === 'pct') {
+        (s.tdBills || []).forEach(function (b, i) { kids.push({ id: 't' + i, from: 'td', name: b.name, v: b.amount, color: 'var(--c-bill)', sub: b.day != null ? fmtMD(b.day) : 'set aside' }); });
+        (s.kohoBills || []).forEach(function (b, i) { kids.push({ id: 'k' + i, from: 'koho', name: b.name, v: b.amount, color: 'var(--c-bill)', sub: b.day != null ? fmtMD(b.day) : 'set aside' }); });
+      } else if (acc.some(function (n) { return n.id === 'koho'; })) {
         (s.bills || []).forEach(function (b, i) { kids.push({ id: 'k' + i, name: b.name, v: b.amount, color: 'var(--c-bill)', sub: b.day != null ? fmtMD(b.day) : 'set aside' }); });
         if (s.spend > 0.004) kids.push({ id: 'spend', name: 'Spending money', v: r2(s.spend), color: 'var(--c-spend)', sub: 'until ' + fmtMD(s.nextPayday - 1) });
       }
       cols = [[chq], acc, kids];
       acc.forEach(function (n) { links.push({ from: 'chq', to: n.id, v: n.v, color: n.color }); });
-      kids.forEach(function (n) { links.push({ from: 'koho', to: n.id, v: n.v, color: n.color }); });
+      kids.forEach(function (n) { links.push({ from: n.from || 'koho', to: n.id, v: n.v, color: n.color }); });
     }
     return sankeySvg(cols, links, 'How ' + money.format(totalOf(s)) + ' flows to your accounts and bills');
   }
@@ -709,6 +715,8 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
         groupsOf(s).map(function (gr) { return '<dt>' + esc(gr.key === 'chq' ? 'Left in BMO Chequing' : 'To ' + gr.name) + '</dt><dd' + (gr.key === 'card' ? ' class="big2"' : '') + '>' + esc(money.format(gr.amount)) + '</dd>'; }).join('') +
         partsOf(s).filter(function (p) { return p.via === 'card' && p.amount > 0; }).map(function (p) { return '<dt>' + esc(p.name) + ', paid with the card</dt><dd>' + esc(money.format(p.amount)) + '</dd>'; }).join('') +
         '<dt>Plan used</dt><dd>Your own split</dd>'
+      : s.mode === 'pct'
+      ? '<dt>TD bills due before ' + esc(fmtMD(s.nextPayday)) + '</dt><dd>' + esc(money.format(s.tdBillTotal)) + '</dd><dt>KOHO subscriptions due</dt><dd>' + esc(money.format(s.kohoBillTotal)) + '</dd><dt>Left to spend in BMO Chequing</dt><dd class="big2" style="color:' + (s.chq < 0 ? 'var(--bad)' : 'inherit') + '">' + esc(money.format(s.chq)) + '</dd><dt>Plan used</dt><dd>' + esc((s.phase === 'steady' ? 'Card paid off' : 'Paying down card') + ' · ' + s.rules.tdPct + ' / ' + s.rules.kohoPct + ' / ' + (s.phase === 'steady' ? 0 : s.rules.cardPct) + ' / ' + (s.phase === 'steady' ? s.rules.savingsPct + s.rules.cardPct : s.rules.savingsPct) + '%') + '</dd>'
       : '<dt>Bills due before ' + esc(fmtMD(s.nextPayday)) + '</dt><dd>' + esc(money.format(s.billTotal)) + '</dd><dt>Left to spend in KOHO</dt><dd class="big2" style="color:' + (s.spend < 0 ? 'var(--bad)' : 'inherit') + '">' + esc(money.format(s.spend)) + '</dd><dt>Plan used</dt><dd>' + esc(s.phase === 'steady' ? 'Card paid off' : 'Paying down card') + '</dd>';
     return '<div class="split-top"><div>' + donutSvg(s) + '</div><div style="display:grid;gap:12px">' + pctChips(s) +
       '<div class="kv" style="max-width:420px">' + kv + '</div>' +
@@ -781,15 +789,15 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
     var chqBody = '<dl class="kv"><dt>Next deposit</dt><dd>' + esc(fmtWMD(dayNum(nx.payday))) + '</dd><dt>Expected so far</dt><dd>' + (en > 0 ? esc(money.format(en)) : '—') + '</dd>' +
       (la ? '<dt>Last deposit</dt><dd>' + esc(money.format(la.actual.amount)) + ' · ' + esc(fmtMD(dayNum(la.payday))) + '</dd><dt>Stays in chequing</dt><dd>' + esc(money.format(Number(splitOf(la).kept) || 0)) + '</dd>' : '') + '</dl>' +
       (deps.length ? '<div><p class="label" style="margin-bottom:4px">Recent deposits</p><dl class="kv">' + deps.map(function (c) { return '<dt>' + esc(fmtWMD(dayNum(c.payday))) + '</dt><dd>' + esc(money.format(c.actual.amount)) + '</dd>'; }).join('') + '</dl></div>' : '') +
-      '<p class="small muted">Everything that lands here gets split out, so chequing goes back to about $0 each payday.</p>';
+      '<p class="small muted">Your pay lands here. After the transfers, what stays is your spending money until the next cheque.</p>';
     html += row('chq', 'BMO Chequing', ACCT.chq.role, en > 0 ? esc(money.format(en)) : '—', 'expected ' + fmtMD(dayNum(nx.payday)), chqBody);
-    // RBC ION Visa, KOHO, BMO Savings
-    ['card', 'koho', 'savings'].forEach(function (k) {
+    // TD, KOHO, RBC ION Visa, BMO Savings
+    ['td', 'koho', 'card', 'savings'].forEach(function (k) {
       var nm = nextMove(k), right = nm ? esc(money.format(nm.amount)) : '—', rsub = nm ? (nm.pending ? 'send now · ' + fmtMD(nm.day) : 'on ' + fmtMD(nm.day)) : 'no cheque yet';
       var body = '<dl class="kv"><dt>' + (nm && nm.pending ? 'Payment to send' : 'Next payment') + '</dt><dd class="big2">' + right + '</dd><dt>Date</dt><dd>' + (nm ? esc(fmtWMD(nm.day)) + (nm.pending ? ' (cheque is in)' : '') : '—') + '</dd>' + (nm && nm.expected ? '<dt>Based on</dt><dd>expected cheque</dd>' : '') + '</dl>' +
         '<p class="small muted">' + esc(HOW[k]) + '</p>';
       if (k === 'card') body += cardMini();
-      if (k === 'koho') body += kohoMini(nm);
+      if (k === 'koho' || k === 'td') body += billsMini(k, nm);
       if (k === 'savings') body += saveMini();
       html += row(k, ACCT[k].name, ACCT[k].role, right, rsub, body);
     });
@@ -801,13 +809,13 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
     var now = Math.max(0, r2(bal - cardPaidSince())), u = Math.round(now / lim * 100);
     return '<dl class="kv"><dt>Owed (after payments ticked here)</dt><dd>' + esc(money.format(now)) + '</dd><dt>Credit used</dt><dd style="color:' + (u > 30 ? 'var(--warn)' : 'var(--good)') + '">' + u + '%</dd></dl>';
   }
-  function kohoMini(nm) {
-    var s = nm ? (nm.from ? splitOf(nm.from) : nm.split) : null, html = '';
-    if (s) html += '<dl class="kv"><dt>Bills due before ' + esc(fmtMD(s.nextPayday)) + '</dt><dd>' + esc(money.format(s.billTotal)) + '</dd><dt>Left to spend</dt><dd class="big2">' + esc(money.format(s.spend)) + '</dd></dl>';
-    html += '<div class="row"><button class="btn btn-quiet" type="button" data-action="koho-bills" aria-expanded="' + state.showKohoBills + '">' + (state.showKohoBills ? 'Hide bills' : 'See bills') + '</button></div>';
-    if (state.showKohoBills) {
-      var kb = state.bills.filter(function (b) { return (b.from || 'koho') === 'koho' && b.status !== 'cancelled'; }).sort(billSort);
-      html += '<div class="bills">' + kb.map(function (b) { return '<div class="bill"><div class="bn">' + esc(b.name) + (b.status === 'cancelling' ? chip('Cancelling', 'c-warn') : '') + '</div><div class="bm">' + esc(billWhen(b)) + '</div><div class="ba"><span>' + (ENGINE.billMonthly(b) ? esc(money.format(ENGINE.billMonthly(b))) : 'Add price') + '</span></div></div>'; }).join('') + '</div>' +
+  function billsMini(k, nm) {
+    var s = nm ? (nm.from ? splitOf(nm.from) : nm.split) : null, html = '', open = !!state.showBills[k];
+    if (s && !s.custom && s.mode === 'pct') { var bt = billsFor(s, k); html += '<dl class="kv"><dt>Bills due before ' + esc(fmtMD(s.nextPayday)) + '</dt><dd>' + esc(money.format(bt)) + '</dd><dt>Extra that builds up here</dt><dd>' + esc(money.format(r2(s[k] - bt))) + '</dd></dl>'; }
+    html += '<div class="row"><button class="btn btn-quiet" type="button" data-action="acct-bills" data-k="' + k + '" aria-expanded="' + open + '">' + (open ? 'Hide bills' : 'See bills') + '</button></div>';
+    if (open) {
+      var kb = state.bills.filter(function (b) { return (b.from || 'koho') === k && b.status !== 'cancelled'; }).sort(billSort);
+      html += (kb.length ? '<div class="bills">' + kb.map(function (b) { return '<div class="bill"><div class="bn">' + esc(b.name) + (b.status === 'cancelling' ? chip('Cancelling', 'c-warn') : '') + '</div><div class="bm">' + esc(billWhen(b)) + '</div><div class="ba"><span>' + (ENGINE.billMonthly(b) ? esc(money.format(ENGINE.billMonthly(b))) : 'Add price') + '</span></div></div>'; }).join('') + '</div>' : '<p class="small muted">No bills paid from ' + esc(ACCT[k].name) + ' yet.</p>') +
         '<button class="link" type="button" data-action="jump" data-v="bills">Edit bills</button>';
     }
     return html;
@@ -818,7 +826,8 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
   }
 
   /* ---------- bills ---------- */
-  function billWhen(b) { var d = Number(b.day); return (d >= 1 && d <= 31 ? 'Renews on the ' + ord(d) : 'Date not set · set aside each cheque') + ' · from ' + ((b.from || 'koho') === 'card' ? 'RBC ION Visa' : 'KOHO'); }
+  function billFromName(f) { return f === 'card' ? 'RBC ION Visa' : (f === 'td' ? 'TD' : 'KOHO'); }
+  function billWhen(b) { var d = Number(b.day); return (d >= 1 && d <= 31 ? 'Renews on the ' + ord(d) : 'Date not set · set aside each cheque') + ' · from ' + billFromName(b.from || 'koho'); }
   function billSort(a, b) { var da = Number(a.day) || 99, db = Number(b.day) || 99; return da - db || String(a.name).localeCompare(String(b.name)); }
   function billForm(b) {
     var id = b ? b.id : 'new', v = b || { name: '', amount: '', taxPct: 13, day: '', from: 'koho', status: 'active' };
@@ -827,7 +836,7 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
       '<label class="field"><span>Price</span><input id="bf-amt-' + esc(id) + '" name="amount" type="number" step="0.01" min="0" inputmode="decimal" value="' + esc(v.amount == null ? '' : v.amount) + '"></label></div>' +
       '<div class="grid3"><label class="field"><span>Tax on top</span><select id="bf-tax-' + esc(id) + '" name="taxPct"><option value="13"' + (Number(v.taxPct) === 13 ? ' selected' : '') + '>Add 13% HST</option><option value="0"' + (!Number(v.taxPct) ? ' selected' : '') + '>Price already includes tax</option></select></label>' +
       '<label class="field"><span>Renews on day</span><input id="bf-day-' + esc(id) + '" name="day" type="number" min="1" max="31" inputmode="numeric" placeholder="Not sure" value="' + esc(v.day == null ? '' : v.day) + '"></label>' +
-      '<label class="field"><span>Paid from</span><select id="bf-from-' + esc(id) + '" name="from"><option value="koho"' + ((v.from || 'koho') === 'koho' ? ' selected' : '') + '>KOHO</option><option value="card"' + (v.from === 'card' ? ' selected' : '') + '>RBC ION Visa</option></select></label></div>' +
+      '<label class="field"><span>Paid from</span><select id="bf-from-' + esc(id) + '" name="from"><option value="td"' + (v.from === 'td' ? ' selected' : '') + '>TD (fixed bills)</option><option value="koho"' + ((v.from || 'koho') === 'koho' ? ' selected' : '') + '>KOHO (subscriptions)</option><option value="card"' + (v.from === 'card' ? ' selected' : '') + '>RBC ION Visa</option></select></label></div>' +
       '<label class="field"><span>Status</span><select id="bf-status-' + esc(id) + '" name="status"><option value="active"' + (v.status === 'active' || !v.status ? ' selected' : '') + '>Active</option><option value="cancelling"' + (v.status === 'cancelling' ? ' selected' : '') + '>Cancelling soon</option><option value="cancelled"' + (v.status === 'cancelled' ? ' selected' : '') + '>Cancelled (stops counting)</option></select></label>' +
       '<div class="row"><button class="btn btn-primary" type="submit">Save bill</button><button class="link" type="button" data-action="bill-cancel">Cancel</button>' +
       (b ? (state.confirmDel === b.id ? '<span class="small">Delete ' + esc(b.name) + '? <button class="link danger" type="button" data-action="bill-del-yes" data-id="' + esc(b.id) + '">Yes, delete</button> <button class="link" type="button" data-action="bill-del-no">Keep</button></span>' : '<button class="link danger" type="button" data-action="bill-del" data-id="' + esc(b.id) + '">Delete</button>') : '') + '</div></form>';
@@ -835,14 +844,14 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
   function renderBills() {
     var el = $('#bills'), canEdit = canWrite(), mon = monthlyBills(), per = r2(mon * 12 / 26);
     var la = latestActual(), nx = nextCheque(), base = la && dayNum(la.payday) + (Number(state.settings.payEvery) || 14) > todayNum() ? la : nx;
-    var bd = dayNum(base.payday), win = ENGINE.billsInWindow(state.bills, 'koho', bd, bd + (Number(state.settings.payEvery) || 14) - 1);
+    var bd = dayNum(base.payday), be = bd + (Number(state.settings.payEvery) || 14) - 1, win = ENGINE.billsInWindow(state.bills, 'td', bd, be).concat(ENGINE.billsInWindow(state.bills, 'koho', bd, be));
     var s = { bills: win, billTotal: r2(win.reduce(function (a, b) { return a + b.amount; }, 0)) };
     var dueIds = {}; s.bills.forEach(function (b) { dueIds[b.id] = b; });
-    var html = '<div class="panel-head"><div><p class="label eyebrow">Paid from KOHO unless you say otherwise</p><h2 id="h-bills">Bills</h2></div>' + (canEdit ? '<button class="btn btn-quiet" type="button" data-action="bill-add">Add a bill</button>' : '') + '</div>';
+    var html = '<div class="panel-head"><div><p class="label eyebrow">Fixed bills from TD · subscriptions from KOHO</p><h2 id="h-bills">Bills</h2></div>' + (canEdit ? '<button class="btn btn-quiet" type="button" data-action="bill-add">Add a bill</button>' : '') + '</div>';
     html += '<div class="totals"><span>Every month <b>' + esc(money.format(mon)) + '</b></span><span>Per cheque <b>' + esc(money.format(per)) + '</b></span><span>Due ' + esc(fmtMD(dayNum(base.payday))) + '–' + esc(fmtMD(dayNum(base.payday) + 13)) + ' <b>' + esc(money.format(s.billTotal)) + '</b></span></div>';
     if (state.editBill === 'new') html += billForm(null);
     var list = state.bills.slice().sort(billSort);
-    if (!list.length) html += '<div class="empty">No bills yet. Add your phone and subscriptions so KOHO always gets enough.</div>';
+    if (!list.length) html += '<div class="empty">No bills yet. Add your phone and subscriptions so TD and KOHO always get enough.</div>';
     html += '<div class="bills">';
     list.forEach(function (b) {
       var amt = ENGINE.billMonthly(b), off = b.status === 'cancelled', due = dueIds[b.id];
@@ -857,33 +866,41 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
 
   /* ---------- planner ---------- */
   function planDefaults() {
-    var st = state.settings, rules = deepMerge(DEFAULTS.rules, st.rules || {}), nx = nextCheque(), en = expNet(nx), la = latestActual();
+    var st = state.settings, P = deepMerge(DEFAULTS.rules, st.rules || {}).pct, nx = nextCheque(), en = expNet(nx), la = latestActual();
     var amt = en > 0 ? en : (la ? la.actual.amount : 800);
-    return { phase: st.phase || 'paydown', amount: Math.round(amt), cardPct: rules.paydown.cardPct, savingsFixed: rules.paydown.savingsFixed, cardMonthly: rules.steady.cardMonthly, savingsPct: rules.steady.savingsPct, payday: nx.payday };
+    return { phase: st.phase || 'paydown', amount: Math.round(amt), tdPct: P.tdPct, kohoPct: P.kohoPct, cardPct: P.cardPct, savingsPct: P.savingsPct, payday: nx.payday };
   }
+  function planUsed(p) { return p.tdPct + p.kohoPct + (p.phase === 'steady' ? 0 : p.cardPct) + p.savingsPct; }
   function renderPlannerControls() {
     if (!state.plan) state.plan = planDefaults();
-    var p = state.plan;
+    var p = state.plan, P = deepMerge(DEFAULTS.rules, state.settings.rules || {}).pct;
     $('#pp-paydown').setAttribute('aria-pressed', p.phase === 'paydown'); $('#pp-steady').setAttribute('aria-pressed', p.phase === 'steady');
-    $('#plan-hint').textContent = p.phase === 'paydown' ? 'While you’re paying off the card: a share of each cheque goes to the card, a fixed amount to savings, and KOHO gets the rest for bills and spending.' : 'Once the card is at $0: the card gets one monthly payment from the first cheque of the month, and the rest splits between savings and KOHO.';
+    $('#plan-hint').textContent = 'Each cheque splits by percentages. TD never gets less than ' + money0.format(P.tdMin) + ' and KOHO never less than ' + money0.format(P.kohoMin) + ', so bills are covered on small cheques. Whatever is left stays in BMO Chequing as spending money.' + (p.phase === 'steady' ? ' With the card paid off, the card’s share goes to savings.' : '');
     var a = $('#pl-amount'); a.value = p.amount; $('#pl-amount-v').textContent = money0.format(p.amount);
-    var c = $('#pl-card'), s = $('#pl-save');
-    if (p.phase === 'paydown') { c.min = 0; c.max = 80; c.step = 1; c.value = p.cardPct; $('#pl-card-l').textContent = 'To RBC ION Visa (share of cheque)'; $('#pl-card-v').textContent = p.cardPct + '%'; s.min = 0; s.max = 500; s.step = 5; s.value = p.savingsFixed; $('#pl-save-l').textContent = 'To BMO Savings (fixed)'; $('#pl-save-v').textContent = money0.format(p.savingsFixed); }
-    else { c.min = 0; c.max = 600; c.step = 10; c.value = p.cardMonthly; $('#pl-card-l').textContent = 'To RBC ION Visa (once a month)'; $('#pl-card-v').textContent = money0.format(p.cardMonthly); s.min = 0; s.max = 80; s.step = 1; s.value = p.savingsPct; $('#pl-save-l').textContent = 'To BMO Savings (share of what’s left)'; $('#pl-save-v').textContent = p.savingsPct + '%'; }
+    $('#pl-td').value = p.tdPct; $('#pl-koho').value = p.kohoPct; $('#pl-card').value = p.cardPct; $('#pl-save').value = p.savingsPct;
+    $('#pl-card-wrap').hidden = p.phase === 'steady';
     $('#pl-save-btn').hidden = !canWrite();
-    renderPlannerResult();
+    renderPlannerLabels(); renderPlannerResult();
+  }
+  function renderPlannerLabels() {
+    var p = state.plan; if (!p) return;
+    $('#pl-td-v').textContent = p.tdPct + '%'; $('#pl-koho-v').textContent = p.kohoPct + '%'; $('#pl-card-v').textContent = p.cardPct + '%';
+    $('#pl-save-v').textContent = (p.phase === 'steady' ? p.savingsPct + p.cardPct : p.savingsPct) + '%';
+    var used = planUsed(p) + (p.phase === 'steady' ? p.cardPct : 0), left = 100 - used, el = $('#pl-left');
+    el.textContent = left < 0 ? 'That adds up to ' + used + '%. Bring it down to 100% or less.' : 'Spending money in BMO Chequing: ' + left + '% (before the bill minimums).';
+    el.style.color = left < 0 ? 'var(--bad)' : '';
+    $('#pl-save-btn').disabled = left < 0;
   }
   function renderPlannerResult() {
     var p = state.plan; if (!p) return;
-    var rules = p.phase === 'paydown' ? { paydown: { cardPct: p.cardPct, savingsFixed: p.savingsFixed } } : { steady: { cardMonthly: p.cardMonthly, savingsPct: p.savingsPct } };
-    var s = ENGINE.compute(state.settings, state.bills, p.amount, dayNum(p.payday), { phase: p.phase, rules: rules });
-    var html = '<div class="stack" role="img" aria-label="Split bar">' + ['card', 'koho', 'savings'].map(function (k) { return '<span style="width:' + (s.amount > 0 ? s[k] / s.amount * 100 : 0) + '%;background:' + ACCT[k].color + '" title="' + esc(ACCT[k].name) + '"></span>'; }).join('') + '</div>';
-    ['card', 'koho', 'savings'].forEach(function (k) { html += '<div class="res-row">' + dot(ACCT[k].color) + '<span>' + esc(ACCT[k].name) + '</span><b>' + esc(money.format(s[k])) + '</b></div>'; });
-    html += '<div class="res-row">' + dot('var(--c-bill)') + '<span>Bills due before ' + esc(fmtMD(s.nextPayday)) + '</span><b>−' + esc(money.format(s.billTotal)) + '</b></div>';
-    html += '<div class="res-row">' + dot('var(--c-spend)') + '<span><b style="font-family:var(--f-body)">Left to spend</b> for 2 weeks</span><b style="color:' + (s.spend < 0 ? 'var(--bad)' : 'inherit') + '">' + esc(money.format(s.spend)) + '</b></div>';
-    html += '<p class="small muted">About ' + esc(money.format(s.spend / 14)) + ' a day for food, transit and everything else, using the bills due ' + esc(fmtMD(dayNum(p.payday))) + '–' + esc(fmtMD(s.nextPayday - 1)) + '.</p>';
+    var s = ENGINE.compute(state.settings, state.bills, p.amount, dayNum(p.payday), { phase: p.phase, rules: { pct: { tdPct: p.tdPct, kohoPct: p.kohoPct, cardPct: p.cardPct, savingsPct: p.savingsPct } } });
+    var keys = ['td', 'koho', 'card', 'savings', 'chq'];
+    var html = '<div class="stack" role="img" aria-label="Split bar">' + keys.map(function (k) { return '<span style="width:' + (s.amount > 0 ? Math.max(0, s[k]) / s.amount * 100 : 0) + '%;background:' + ACCT[k].color + '" title="' + esc(ACCT[k].name) + '"></span>'; }).join('') + '</div>';
+    ['td', 'koho', 'card', 'savings'].forEach(function (k) { html += '<div class="res-row">' + dot(ACCT[k].color) + '<span>' + esc(ACCT[k].name) + (billsFor(s, k) > 0 ? ' <span class="muted">(' + esc(money.format(billsFor(s, k))) + ' for bills)</span>' : '') + '</span><b>' + esc(money.format(s[k])) + '</b></div>'; });
+    html += '<div class="res-row">' + dot(ACCT.chq.color) + '<span><b style="font-family:var(--f-body)">Left to spend</b> in BMO Chequing for 2 weeks</span><b style="color:' + (s.chq < 0 ? 'var(--bad)' : 'inherit') + '">' + esc(money.format(s.chq)) + '</b></div>';
+    html += '<p class="small muted">About ' + esc(money.format(s.chq / 14)) + ' a day for food, transit and everything else.</p>';
     if (s.notes.length) html += '<p class="small" style="color:var(--warn)">' + s.notes.map(esc).join(' ') + '</p>';
-    var g = shieldForecast(p.phase === 'paydown' ? s.savings : s.savings);
+    var g = shieldForecast(s.savings);
     if (g) html += '<p class="small muted">' + esc(g) + '</p>';
     $('#pl-res').innerHTML = html;
   }
@@ -905,8 +922,8 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
       var paid = cardPaidSince(), now = Math.max(0, r2(bal - paid)), u = now / lim * 100;
       html += '<div class="stat2"><span class="label">Owed now</span><span class="v">' + esc(money.format(now)) + '</span><span class="small muted">of a ' + esc(money0.format(lim)) + ' limit · ' + Math.round(u) + '% used' + (paid > 0 ? ' · ' + esc(money.format(paid)) + ' paid here since ' + esc(c.asOf ? fmtMD(dayNum(c.asOf)) : 'you added it') : '') + '</span></div>';
       html += '<div class="meter" role="img" aria-label="' + Math.round(u) + '% of your limit used"><span style="width:' + Math.min(100, u) + '%;background:' + (u > 30 ? 'var(--warn)' : 'var(--good)') + '"></span><span class="mark" style="left:30%" title="30%"></span></div><div class="meter-l"><span>$0</span><span>30%: good for your score</span><span>' + esc(money0.format(lim)) + '</span></div>';
-      var nx = nextCheque(), en = expNet(nx), per = (st.phase === 'steady') ? 0 : r2((en > 0 ? en : 800) * (Number(deepMerge(DEFAULTS.rules, st.rules || {}).paydown.cardPct) || 0) / 100);
-      if (now <= 0) html += '<div class="banner"><p>Your card is paid off. Switch the plan to “Card paid off” so more goes to KOHO and savings.</p>' + (canEdit && st.phase !== 'steady' ? '<button class="link" type="button" data-action="set-phase" data-v="steady">Switch now</button>' : '') + '</div>';
+      var nx = nextCheque(), en = expNet(nx), per = (st.phase === 'steady') ? 0 : r2((en > 0 ? en : 800) * (Number(deepMerge(DEFAULTS.rules, st.rules || {}).pct.cardPct) || 0) / 100);
+      if (now <= 0) html += '<div class="banner"><p>Your card is paid off. Switch the plan to “Card paid off” so the card’s share goes to savings.</p>' + (canEdit && st.phase !== 'steady' ? '<button class="link" type="button" data-action="set-phase" data-v="steady">Switch now</button>' : '') + '</div>';
       else if (per > 0) { var n = Math.ceil(now / per); html += '<p class="small muted">At about ' + esc(money.format(per)) + ' a cheque, it’s paid off in ' + n + ' cheque' + (n === 1 ? '' : 's') + ' (around ' + esc(fmtLong(dayNum(nx.payday) + (n - 1) * 14)) + '), if you don’t add new spending.</p>'; }
       html += '<p class="small muted">While you still owe from past months, new charges get interest right away. Pay the full statement for a month or two before moving bills onto the card.</p>';
     } else {
@@ -956,7 +973,7 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
     var nx = nextCheque(), la = latestActual(), st = state.settings;
     return JSON.stringify({
       today: isoOf(todayNum()), plan: st.phase === 'steady' ? 'Card paid off' : 'Paying down card', rules: st.rules,
-      accounts: { payLandsIn: 'BMO Chequing', card: { name: 'RBC ION Visa', limit: st.card && st.card.limit, owedEnteredOn: st.card && st.card.asOf, owedThen: st.card && st.card.balance, paidSinceViaThisPage: cardPaidSince() }, bills: 'KOHO', savings: { name: 'BMO Savings', shieldTotal: savingsTotal(), goal: st.shieldGoal } },
+      accounts: { payLandsIn: 'BMO Chequing', card: { name: 'RBC ION Visa', limit: st.card && st.card.limit, owedEnteredOn: st.card && st.card.asOf, owedThen: st.card && st.card.balance, paidSinceViaThisPage: cardPaidSince() }, fixedBills: 'TD', subscriptions: 'KOHO', spending: 'BMO Chequing (what is left after the transfers)', savings: { name: 'BMO Savings', shieldTotal: savingsTotal(), goal: st.shieldGoal } },
       nextCheque: { payday: nx.payday, expectedTakeHomeSoFar: expNet(nx), hoursSoFar: nx.expected && nx.expected.hours, splitIfExpected: expNet(nx) > 0 ? liveSplit(nx, expNet(nx)) : null },
       latestCheque: la ? { payday: la.payday, amount: la.actual.amount, split: splitOf(la), moved: la.moved || {} } : null,
       bills: state.bills.map(function (b) { return { name: b.name, monthlyWithTax: ENGINE.billMonthly(b), renewsDay: b.day || null, paidFrom: b.from || 'koho', status: b.status || 'active' }; }),
@@ -968,7 +985,7 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
     q = String(q || '').trim(); if (!q || !sampleFn || state.ask.busy) return;
     state.ask = { busy: true, text: '', q: q, err: '' }; renderAsk();
     askCtl = new AbortController();
-    var prompt = 'You are the budgeting helper inside "Cheque Day", a page Travis (a college student in Toronto who works part-time) uses to split each paycheque between his RBC ION Visa, KOHO (bills and spending) and BMO Savings. ' +
+    var prompt = 'You are the budgeting helper inside "Cheque Day", a page Travis (a college student in Toronto who works part-time) uses to split each paycheque by percentages between TD (fixed bills like his phone), KOHO (subscriptions), his RBC ION Visa and BMO Savings; what is left stays in BMO Chequing as spending money. ' +
       'Answer his question using only the data below. Plain, friendly words, no jargon, at most 120 words, numbers in Canadian dollars. Do the arithmetic carefully. If the data is missing something you need, say what to add on the page. You are not a financial advisor; don’t give investment advice. Don’t use markdown headings or tables; short lines or a few dashes are fine.\n\nDATA (JSON):\n' + askContext() + '\n\nQUESTION: ' + q;
     sampleFn(prompt, { cache: false, signal: askCtl.signal, modelTier: 'default', onText: function (u) { state.ask.text = u.text; var o = document.getElementById('ask-out'); if (o) { o.hidden = false; o.className = 'answer'; o.textContent = u.text; } } })
       .then(function (r) { state.ask.busy = false; state.ask.text = r.text + (r.truncated ? '\n\n(Cut short. Ask a narrower question.)' : ''); renderAsk(); })
@@ -987,12 +1004,12 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
   function renderHistory() {
     var list = sortedCheques().slice().reverse(), el = $('#hist-body');
     if (!list.length) { el.innerHTML = '<div class="empty">Your cheques will be listed here.</div>'; return; }
-    var html = '<div class="tbl-box"><table><thead><tr><th>Payday</th><th class="n">Expected</th><th class="n">Actual</th><th class="n">Card</th><th class="n">KOHO</th><th class="n">Savings</th><th>Moved</th></tr></thead><tbody>';
+    var html = '<div class="tbl-box"><table><thead><tr><th>Payday</th><th class="n">Expected</th><th class="n">Actual</th><th class="n">TD</th><th class="n">KOHO</th><th class="n">Card</th><th class="n">Savings</th><th class="n">Spending</th><th>Moved</th></tr></thead><tbody>';
     list.forEach(function (c) {
       var has = c.actual && c.actual.amount != null, s = has ? splitOf(c) : null, mc = has ? movedCount(c) : null, en = expNet(c);
-      var z = function (v) { return s && s.custom && !(v > 0) ? '—' : esc(money.format(v)); };
+      var z = function (v) { return v == null || (s && s.custom && !(v > 0)) ? '—' : esc(money.format(v)); };
       html += '<tr><td>' + esc(fmtWMD(dayNum(c.payday))) + (s && s.custom ? ' ' + chip('Own split', 'c-info') : '') + '</td><td class="n">' + (en != null && en > 0 ? esc(money.format(en)) : '—') + '</td><td class="n">' + (has ? esc(money.format(c.actual.amount)) : '—') + '</td>' +
-        '<td class="n">' + (s ? z(s.card) : '—') + '</td><td class="n">' + (s ? z(s.koho) : '—') + '</td><td class="n">' + (s ? z(s.savings) : '—') + '</td>' +
+        '<td class="n">' + (s ? z(s.td) : '—') + '</td><td class="n">' + (s ? z(s.koho) : '—') + '</td><td class="n">' + (s ? z(s.card) : '—') + '</td><td class="n">' + (s ? z(s.savings) : '—') + '</td><td class="n">' + (s ? z(s.custom ? s.kept : s.chq) : '—') + '</td>' +
         '<td>' + (has ? (mc.n === mc.tot ? chip('All', 'c-good') : chip(mc.n + ' of ' + mc.tot, 'c-warn')) : chip(dayNum(c.payday) >= todayNum() ? 'Upcoming' : 'Not confirmed', 'c-muted')) + '</td></tr>';
     });
     el.innerHTML = html + '</tbody></table></div>';
@@ -1150,7 +1167,7 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
         if (!(v > 0)) { toast('Enter the amount Dayforce shows, for example 803.38.', true); return; }
         var nx = nextCheque(), c = state.cheques.filter(function (x) { return x.payday === id; })[0] || nx;
         var sp = ENGINE.compute(state.settings, state.bills, v, dayNum(id));
-        var patch = { payday: id, actual: { amount: r2(v), confirmedAt: new Date().toISOString(), by: state.mode === 'snapshot' ? 'you (private site)' : 'you' }, split: sp, moved: { card: null, koho: null, savings: null } };
+        var patch = { payday: id, actual: { amount: r2(v), confirmedAt: new Date().toISOString(), by: state.mode === 'snapshot' ? 'you (private site)' : 'you' }, split: sp, moved: { td: null, koho: null, card: null, savings: null } };
         if (!c.periodStart && c.expected) { patch.periodStart = c.expected.periodStart; patch.periodEnd = c.expected.periodEnd; }
         state.confirmFor = null; state.draftAmt = ''; state.actualPick = id;
         write(function () { return store.patchCheque(id, patch); }, 'Cheque confirmed. Here’s your split.');
@@ -1165,7 +1182,7 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
       }
       case 'pick-actual': state.actualPick = id; renderActual(); break;
       case 'acct': { var kk = t.getAttribute('data-k'); state.open[kk] = !state.open[kk]; renderAccounts(); break; }
-      case 'koho-bills': state.showKohoBills = !state.showKohoBills; state.open.koho = true; renderAccounts(); break;
+      case 'acct-bills': { var bk = t.getAttribute('data-k'); state.showBills[bk] = !state.showBills[bk]; state.open[bk] = true; renderAccounts(); break; }
       case 'bill-add': state.editBill = 'new'; state.confirmDel = null; renderBills(); var bi = document.getElementById('bf-name-new'); if (bi) bi.focus(); break;
       case 'bill-edit': state.editBill = id; state.confirmDel = null; renderBills(); break;
       case 'bill-cancel': state.editBill = null; state.confirmDel = null; renderBills(); break;
@@ -1176,7 +1193,8 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
       case 'plan-reset': state.plan = planDefaults(); state.planTouched = false; renderPlannerControls(); break;
       case 'plan-save': {
         var p2 = state.plan, rules = deepMerge(DEFAULTS.rules, state.settings.rules || {});
-        if (p2.phase === 'paydown') rules.paydown = { cardPct: p2.cardPct, savingsFixed: p2.savingsFixed }; else rules.steady = { cardMonthly: p2.cardMonthly, savingsPct: p2.savingsPct };
+        if (planUsed(p2) > 100) { toast('Your percentages add up to more than 100%.', true); return; }
+        rules.pct = deepMerge(rules.pct, { tdPct: p2.tdPct, kohoPct: p2.kohoPct, cardPct: p2.cardPct, savingsPct: p2.savingsPct });
         state.planTouched = false;
         write(function () { return store.patchSettings({ phase: p2.phase, rules: rules }); }, 'Saved. New cheques use these rules.');
         break;
@@ -1206,12 +1224,14 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
     var t = e.target;
     if (t.id === 'conf-amt') { state.draftAmt = t.value; updateConfirmPreview(); }
     if (t.id === 'ask-q') state.ask.q = t.value;
-    if (t.id === 'pl-amount' || t.id === 'pl-card' || t.id === 'pl-save') {
+    if (t.id === 'pl-amount' || t.id === 'pl-td' || t.id === 'pl-koho' || t.id === 'pl-card' || t.id === 'pl-save') {
       var p = state.plan || (state.plan = planDefaults()); state.planTouched = true;
       if (t.id === 'pl-amount') { p.amount = Number(t.value); $('#pl-amount-v').textContent = money0.format(p.amount); }
-      if (t.id === 'pl-card') { if (p.phase === 'paydown') { p.cardPct = Number(t.value); $('#pl-card-v').textContent = p.cardPct + '%'; } else { p.cardMonthly = Number(t.value); $('#pl-card-v').textContent = money0.format(p.cardMonthly); } }
-      if (t.id === 'pl-save') { if (p.phase === 'paydown') { p.savingsFixed = Number(t.value); $('#pl-save-v').textContent = money0.format(p.savingsFixed); } else { p.savingsPct = Number(t.value); $('#pl-save-v').textContent = p.savingsPct + '%'; } }
-      renderPlannerResult();
+      if (t.id === 'pl-td') p.tdPct = Number(t.value);
+      if (t.id === 'pl-koho') p.kohoPct = Number(t.value);
+      if (t.id === 'pl-card') p.cardPct = Number(t.value);
+      if (t.id === 'pl-save') p.savingsPct = Number(t.value);
+      renderPlannerLabels(); renderPlannerResult();
     }
   });
   document.addEventListener('submit', function (e) {
@@ -1220,7 +1240,7 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
       var id = f.getAttribute('data-bill-form'), fd = new FormData(f), name = String(fd.get('name') || '').trim();
       if (!name) { toast('Give the bill a name.', true); return; }
       var amt = String(fd.get('amount') || '').trim(), day = String(fd.get('day') || '').trim();
-      var data = { name: name, amount: amt === '' ? null : r2(parseFloat(amt)), taxPct: Number(fd.get('taxPct')) || 0, day: day === '' ? null : Math.max(1, Math.min(31, parseInt(day, 10))), from: fd.get('from') === 'card' ? 'card' : 'koho', status: String(fd.get('status') || 'active') };
+      var data = { name: name, amount: amt === '' ? null : r2(parseFloat(amt)), taxPct: Number(fd.get('taxPct')) || 0, day: day === '' ? null : Math.max(1, Math.min(31, parseInt(day, 10))), from: fd.get('from') === 'card' ? 'card' : (fd.get('from') === 'td' ? 'td' : 'koho'), status: String(fd.get('status') || 'active') };
       var old = state.bills.filter(function (b) { return b.id === id; })[0]; if (old && old.note) data.note = old.note; if (old && old.order != null) data.order = old.order;
       var nid = id === 'new' ? rid() : id; state.editBill = null;
       write(function () { return store.setBill(nid, data); }, 'Bill saved');
@@ -1248,7 +1268,7 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
   function exampleData() {
     var t = todayNum(), pd = ENGINE.paydayAfter(DEFAULTS, t), prev = pd - 14;
     var bills = [
-      { id: 'ex1', name: 'Phone plan (example)', amount: 75, taxPct: 0, day: 8, from: 'koho', status: 'active' },
+      { id: 'ex1', name: 'Phone plan (example)', amount: 75, taxPct: 0, day: 8, from: 'td', status: 'active' },
       { id: 'ex2', name: 'Music (example)', amount: 5.99, taxPct: 13, day: 18, from: 'koho', status: 'active' },
       { id: 'ex3', name: 'Cloud storage (example)', amount: 3.99, taxPct: 13, day: 18, from: 'koho', status: 'active' },
       { id: 'ex4', name: 'Streaming (example)', amount: 10.99, taxPct: 13, day: null, from: 'koho', status: 'cancelling' }
@@ -1256,7 +1276,7 @@ footer.wrap { padding-block: 0 40px; color: var(--muted); font-size: 13px; displ
     var st = deepMerge(DEFAULTS, {});
     var s = ENGINE.compute(st, bills, 780, prev);
     return { settings: st, bills: bills, cheques: [
-      { payday: isoOf(prev), periodStart: isoOf(prev - 22), periodEnd: isoOf(prev - 9), expected: { net: 760, hours: 44, shiftCount: 10, periodStart: isoOf(prev - 22), periodEnd: isoOf(prev - 9) }, actual: { amount: 780, confirmedAt: new Date().toISOString() }, split: s, moved: { card: new Date().toISOString(), koho: null, savings: null } },
+      { payday: isoOf(prev), periodStart: isoOf(prev - 22), periodEnd: isoOf(prev - 9), expected: { net: 760, hours: 44, shiftCount: 10, periodStart: isoOf(prev - 22), periodEnd: isoOf(prev - 9) }, actual: { amount: 780, confirmedAt: new Date().toISOString() }, split: s, moved: { td: new Date().toISOString(), koho: null, card: null, savings: null } },
       { payday: isoOf(pd), periodStart: isoOf(pd - 22), periodEnd: isoOf(pd - 9), expected: { net: 640, hours: 36, shiftCount: 8, periodStart: isoOf(pd - 22), periodEnd: isoOf(pd - 9), partial: true } }
     ] };
   }
